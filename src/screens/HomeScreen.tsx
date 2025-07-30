@@ -106,11 +106,17 @@ const HomeScreen: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen w-screen relative bg-cover bg-center flex flex-col${
+      className={`min-h-screen w-screen relative bg-cover bg-center flex flex-col overflow-hidden${
         layout.isMobile && layout.isHorizontal ? " px-2 py-2" : ""
       }`}
       style={{ backgroundImage: `url('/backgrounds/Homepagebg.webp')` }}
     >
+      {/* Prevent scrolling globally for this screen */}
+      <style>{`
+        html, body {
+          overflow: hidden !important;
+        }
+      `}</style>
       {/* Social Media Vertical Bar */}
       <div className="fixed top-1/2 left-0 z-40 -translate-y-1/2 flex flex-col gap-3 p-2 bg-white/10 rounded-r-2xl shadow-lg backdrop-blur-md border-l-4 border-blue-500">
         {[
@@ -384,7 +390,7 @@ const HomeScreen: React.FC = () => {
             ))}
           </motion.ul>
           <motion.div
-            className={`absolute z-20 w-max right-0 bottom-0 translate-x-[100%]${
+            className={`absolute z-20 w-max right-0 translate-x-[100%]${
               layout.isMobile && layout.isHorizontal ? "" : ""
             }`}
             initial={{ opacity: 0 }}
@@ -392,12 +398,17 @@ const HomeScreen: React.FC = () => {
             transition={{ duration: 0.0, delay: 0, type: "spring" }}
           >
             <img
-              src="/characters/intern.png"
+              src="/characters/Intern.webp"
               alt="Scientist Character"
               className={
                 layout.isMobile && layout.isHorizontal
-                  ? "h-[220px] mb-0"
-                  : "h-[380px] mb-0"
+                  ? "h-[320px] w-[320px] mb-0 bottom-[-4px]"
+                  : "h-[450px] w-[430px] mb-0 relative" // remove bottom-[-6px] for clarity
+              }
+              style={
+                layout.isMobile && layout.isHorizontal
+                  ? undefined
+                  : { bottom: '-36px', position: 'relative' }
               }
             />
           </motion.div>
