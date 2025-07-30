@@ -1,34 +1,39 @@
-name: FTP Deploy to Hostinger
+name: 🚀 Build and Deploy React App to Hostinger via FTP
 
 on:
   push:
     branches:
-      - main  # or your deployment branch
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 🧰 Set up Node.js
+      - name: ⚙️ Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # Required by react-router 7+
+          node-version: 20
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install Dependencies
         run: npm ci
 
-      - name: 🏗️ Build the project
+      - name: 🔐 Inject Supabase Environment Variables
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
+      - name: 🏗️ Build Project with Vite
         run: npm run build
 
-      - name: 🚀 Deploy to Hostinger via FTP
+      - name: 🚀 Deploy to Hostinger (subdomain root)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: dist/
+          local-dir: dist
           server-dir: /
