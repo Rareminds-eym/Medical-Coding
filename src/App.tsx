@@ -30,6 +30,7 @@ import BingoGame from './screens/BingoGame';
 import SplashScreen from './components/ui/SplashScreen';
 import Score from './components/Scores/Score';
 import { InstallPrompt, OfflineIndicator } from './components/PWA';
+import GameUnlockGuard from './components/GameUnlockGuard';
 
 
 // Route Error Component
@@ -83,7 +84,7 @@ function App() {
             <AuthPage />
           ),
         },
-        { path: '/home', element: <ProtectedRoute><HomeScreen /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
+        { path: '/home', element: <ProtectedRoute><GameUnlockGuard><HomeScreen /></GameUnlockGuard></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules', element: <ProtectedRoute><ModuleMapScreen /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId', element: <ProtectedRoute><LevelList /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId/levels/:levelId', element: <ProtectedRoute><Level1Index /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
