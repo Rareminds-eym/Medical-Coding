@@ -12,86 +12,52 @@ function isAuthenticated() {
 
 const LoaderScreen: React.FC<LoaderScreenProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const navigate = useNavigate();
   const { isMobile, isHorizontal } = useDeviceLayout();
 
+  // Preload background image
   useEffect(() => {
-    if (progress < 100) {
-      const timer = setTimeout(() => setProgress(progress + 2 + Math.random() * 3), 360);
-      return () => clearTimeout(timer);
-    } else {
+    const img = new window.Image();
+    img.src = "/backgrounds/MCLoader-01.webp";
+    img.onload = () => setImageLoaded(true);
+  }, []);
+
+  // Animate progress over 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + 1;
+        return next > 100 ? 100 : next;
+      });
+    }, 600); // 100% over 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Redirect after 60s if image is loaded and progress is 100
+  useEffect(() => {
+    if (progress === 100 && imageLoaded) {
       const timer = setTimeout(() => {
-        if (isAuthenticated()) {
-          navigate("/home");
-        } else {
-          navigate("/auth");
-        }
+        navigate(isAuthenticated() ? "/home" : "/auth");
         if (onComplete) onComplete();
-      }, 600);
+      }, 800); // small delay for smoother transition
       return () => clearTimeout(timer);
     }
-  }, [progress, onComplete, navigate]);
+  }, [progress, imageLoaded, navigate, onComplete]);
 
   return (
     <div
       className="fixed inset-0 w-full h-full flex items-center justify-center"
       style={{
-        backgroundImage: `url('/backgrounds/LoaderBg.svg')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        minHeight: '100vh',
-        minWidth: '100vw',
+        backgroundImage: `url('/backgrounds/MCLoader-01.webp')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        minHeight: "100vh",
+        minWidth: "100vw",
       }}
     >
-      <style>
-        {`
-        /* From Uiverse.io by Shoh2008 */
-        .loader {
-          width: 48px;
-          height: 48px;
-          background: #353535;
-          display: block;
-          margin: 20px auto;
-          position: relative;
-          box-sizing: border-box;
-          animation: rotationBack 1s ease-in-out infinite reverse;
-        }
-        .loader::before {
-          content: '';
-          box-sizing: border-box;
-          left: 0;
-          top: 0;
-          transform: rotate(45deg);
-          position: absolute;
-          width: 48px;
-          height: 48px;
-          background: #2e2e2e;
-          box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
-        }
-        .loader::after {
-          content: '';
-          box-sizing: border-box;
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          background: rgb(0, 0, 0);
-          transform: translate(-50%, -50%);
-          box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
-        }
-        @keyframes rotationBack {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(-360deg);
-          }
-        }
-        `}
-      </style>
       <div
         className="z-20 text-6xl font-bold rounded-2xl mb-[16px]"
         style={{
@@ -121,10 +87,9 @@ const LoaderScreen: React.FC<LoaderScreenProps> = ({ onComplete }) => {
             fontWeight: 600,
           }}
         >
-          SYSTEM LOADING... {Math.min(Math.floor(progress), 100)}%
+          SYSTEM LOADING... {Math.min(progress, 100)}%
         </div>
-        {/* Loader animation replaces Cog icon */}
-        <span className="loader" style={{ display: "block", margin: "0 auto" }} />
+
         <div className="w-full bg-gray-200/30 rounded-full h-2 mt-4">
           <div
             className="bg-white text-xl rounded-full transition-all duration-300"
