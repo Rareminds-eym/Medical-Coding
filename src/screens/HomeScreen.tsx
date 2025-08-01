@@ -67,7 +67,7 @@ const HomeScreen: React.FC = () => {
   );
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [showGameLocked, setShowGameLocked] = useState(true);
+  const [showGameLocked, setShowGameLocked] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("selectedAvatar", avatar);
