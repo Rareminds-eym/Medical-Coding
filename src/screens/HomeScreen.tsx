@@ -74,14 +74,26 @@ const HomeScreen: React.FC = () => {
   }, [avatar]);
 
   const startGame = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/modules");
   };
 
   const continueGame = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/modules");
   };
 
   const viewScores = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/scores");
   };
 
@@ -378,7 +390,6 @@ const HomeScreen: React.FC = () => {
                 <Button
                   onClick={btn.onClick}
                   {...(btn.variant ? { variant: btn.variant } : {})}
-                  disabled={btn.shouldDisable && isGameLocked}
                   className={
                     layout.isMobile && layout.isHorizontal
                       ? "px-0.5 py-0 !text-[14px] min-w-[60px] !h-9 !mb-2 rounded"
