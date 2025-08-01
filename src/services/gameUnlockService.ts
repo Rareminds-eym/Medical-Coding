@@ -13,7 +13,7 @@ export class GameUnlockService {
    */
   static async isGameLocked(): Promise<boolean> {
     try {
-      console.log('🔍 Checking game unlock status...');
+      
       
       const { data, error } = await supabase
         .from('game_unlock')
