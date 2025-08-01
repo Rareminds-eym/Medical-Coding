@@ -368,7 +368,7 @@ const HomeScreen: React.FC = () => {
           >
             {[
               { label: "Start Game", onClick: startGame, shouldDisable: true },
-              { label: "Continue", onClick: continueGame, shouldDisable: true },
+              // { label: "Continue", onClick: continueGame, shouldDisable: true },
               { label: "View Scores", onClick: viewScores, shouldDisable: true },
               { label: "Instructions", onClick: viewInstructions, shouldDisable: false },
               {
