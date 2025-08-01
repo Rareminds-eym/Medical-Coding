@@ -104,7 +104,7 @@ const conversationLength = 8; // Update if conversation array changes in GameIns
   // Adjusted styles for mobile/landscape
   const rootStyle: React.CSSProperties = {
     minHeight: '100vh',
-    background: 'linear-gradient(rgba(0,0,0,0.69), rgba(0,0,0,0.55)), url("/backgrounds/BingoBg3.jpg") center center / cover no-repeat',
+    background: 'linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.25)), url("/backgrounds/BingoBg4.webp") center center / cover no-repeat',
     display: 'flex',
     flexDirection: 'column',
     ...(isMobile && isHorizontal
@@ -352,13 +352,13 @@ const conversationLength = 8; // Update if conversation array changes in GameIns
               {!isMobile && (
                 <>
                   <motion.img
-                    src="/characters/trainer.png"
+                    src="/characters/Trainer.webp"
                     alt="Trainer Character"
                     style={{
-                      height: '320px',
+                      height: '380px',
                       position: 'absolute',
                       left: '-360px',
-                      top: '50%',
+                      top: '48%',
                       transform: 'translateY(-50%)',
                       zIndex: 2,
                       pointerEvents: 'none',
@@ -513,13 +513,13 @@ const conversationLength = 8; // Update if conversation array changes in GameIns
                 {/* Intern character image on the right */}
                 {!isMobile && (
                   <motion.img
-                    src="/characters/intern.png"
+                    src="/characters/Intern.webp"
                     alt="Intern Character"
                     style={{
-                      height: '320px',
+                      height: '420px',
                       position: 'absolute',
                       right: '-360px',
-                      top: '36%',
+                      top: '18%',
                       transform: 'translateY(-50%)',
                       zIndex: 2,
                       pointerEvents: 'none',
