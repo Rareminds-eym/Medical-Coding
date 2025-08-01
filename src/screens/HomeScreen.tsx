@@ -7,6 +7,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
 import { useDeviceLayout } from "../hooks/useOrientation";
 import { useGameUnlock } from "../hooks/useGameUnlock";
+import { X } from 'lucide-react';
 
 // Avatar options for modal
 const AVATAR_OPTIONS = [
@@ -66,9 +67,7 @@ const HomeScreen: React.FC = () => {
   );
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  // Remove teamInfo state, only use user context
-  // Get collegeCode from user context if available
-  // (moved to below)
+  const [showGameLocked, setShowGameLocked] = useState(true);
 
   useEffect(() => {
     localStorage.setItem("selectedAvatar", avatar);
@@ -104,8 +103,6 @@ const HomeScreen: React.FC = () => {
     navigate("/auth", { replace: true });
   };
 
-  // Removed team info fetch logic, only using user context
-
   return (
     <div
       className={`min-h-screen w-screen relative bg-cover bg-center flex flex-col overflow-hidden${
@@ -124,7 +121,7 @@ const HomeScreen: React.FC = () => {
         {[
           {
             label: 'Instagram',
-            icon: <Icon icon="mdi:instagram" width={28} height={28} />, // color handled below
+            icon: <Icon icon="mdi:instagram" width={28} height={28} />,
             url: 'https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw==',
             color: 'hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400',
           },
@@ -358,14 +355,15 @@ const HomeScreen: React.FC = () => {
             }}
           >
             {[
-              { label: "Start Game", onClick: startGame },
-              { label: "Continue", onClick: continueGame },
-              { label: "View Scores", onClick: viewScores },
-              { label: "Instructions", onClick: viewInstructions },
+              { label: "Start Game", onClick: startGame, shouldDisable: true },
+              { label: "Continue", onClick: continueGame, shouldDisable: true },
+              { label: "View Scores", onClick: viewScores, shouldDisable: true },
+              { label: "Instructions", onClick: viewInstructions, shouldDisable: false },
               {
                 label: "Quit Game",
                 onClick: quitGame,
                 variant: "danger" as const,
+                shouldDisable: false,
               },
             ].map((btn, idx) => (
               <motion.li
@@ -380,13 +378,19 @@ const HomeScreen: React.FC = () => {
                 <Button
                   onClick={btn.onClick}
                   {...(btn.variant ? { variant: btn.variant } : {})}
+                  disabled={btn.shouldDisable && isGameLocked}
                   className={
                     layout.isMobile && layout.isHorizontal
                       ? "px-0.5 py-0 !text-[14px] min-w-[60px] !h-9 !mb-2 rounded"
                       : "px-3 py-2 text-base min-w-[120px] !h-12 rounded-lg"
                   }
                 >
-                  {btn.label}
+                  <div className="flex items-center justify-center gap-2">
+                    {btn.shouldDisable && isGameLocked && (
+                      <Icon icon="mdi:lock" className="w-4 h-4" />
+                    )}
+                    {btn.label}
+                  </div>
                 </Button>
               </motion.li>
             ))}
@@ -405,7 +409,7 @@ const HomeScreen: React.FC = () => {
               className={
                 layout.isMobile && layout.isHorizontal
                   ? "h-[320px] w-[320px] mb-0 bottom-[-4px]"
-                  : "h-[450px] w-[430px] mb-0 relative" // remove bottom-[-6px] for clarity
+                  : "h-[450px] w-[430px] mb-0 relative"
               }
               style={
                 layout.isMobile && layout.isHorizontal
@@ -418,7 +422,7 @@ const HomeScreen: React.FC = () => {
       </div>
 
       {/* Game Lock Overlay */}
-      {!isLoading && isGameLocked && (
+      {!isLoading && isGameLocked && showGameLocked && (
         <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
           initial={{ opacity: 0 }}
@@ -426,11 +430,21 @@ const HomeScreen: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           <motion.div
-            className="text-center p-8 bg-white/10 rounded-2xl shadow-xl max-w-md mx-4 backdrop-blur-lg border border-white/20"
+            className="text-center p-8  rounded-2xl shadow-xl max-w-md mx-4 backdrop-blur-lg border border-white/50 relative"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2, type: "spring" }}
           >
+            {/* Close Button */}
+            <button
+              className="absolute top-3 rounded-full p-1 h-10 w-10 right-5 bg-white text-black hover:text-gray-700 transition-colors duration-200 flex items-center justify-center"
+              onClick={() => setShowGameLocked(false)}
+              aria-label="Close"
+              type="button"
+            >
+              <X size={20} />
+            </button>
+
             <motion.div
               className="mb-6"
               initial={{ scale: 0 }}
