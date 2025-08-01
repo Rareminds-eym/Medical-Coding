@@ -1,6 +1,6 @@
 {
-  "name": "GMP Training Game",
-  "short_name": "GMP Game",
+  "name": "MC Training Game",
+  "short_name": "MC Game",
   "description": "Interactive training game for Good Manufacturing Practices (GMP) learning and assessment",
   "start_url": "/",
   "display": "standalone",
@@ -78,14 +78,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "GMP Training Game - Desktop View"
+      "label": "MC Training Game - Desktop View"
     },
     {
       "src": "/screenshots/mobile-screenshot.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "GMP Training Game - Mobile View"
+      "label": "MC Training Game - Mobile View"
     }
   ],
   "shortcuts": [
