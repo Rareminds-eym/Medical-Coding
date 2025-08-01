@@ -181,7 +181,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           </div>
           {/* Character image for landscape */}
           {layout.isMobile && layout.isHorizontal && (
-            <img src="/characters/intern.png" alt="Scientist Character" className="h-[120px] mt-4" />
+            <img src="/characters/Intern.webp" alt="Scientist Character" className="h-[220px] mt-4" />
           )}
         </div>
         {/* Skip Button */}
