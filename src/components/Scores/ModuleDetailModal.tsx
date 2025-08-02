@@ -77,17 +77,18 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ isOpen, module, o
   const [isLoadingLevel4Data, setIsLoadingLevel4Data] = useState(false);
   const [level4DataError, setLevel4DataError] = useState<string | null>(null);
 
-  // Fetch level2_game_data when modal opens for Module 1
+  // Fetch level2_game_data when modal opens for Modules 1-4
   useEffect(() => {
     const fetchLevel2Data = async () => {
-      if (!isOpen || !module || module.id !== 1 || !user) return;
+      // Check if module ID is in the range 1-4
+      if (!isOpen || !module || ![1, 2, 3, 4].includes(module.id) || !user) return;
 
       setIsLoadingData(true);
       setDataError(null);
 
       try {
-        // Fetch all game modes for Module 1
-        const { data, error } = await Level2GameService.getUserGameData('1', 'gmp-vs-non-gmp');
+        // Fetch all game modes for the current module
+        const { data, error } = await Level2GameService.getUserGameData(module.id.toString(), 'gmp-vs-non-gmp');
         if (error) {
           setDataError(error.message);
         } else { 
@@ -278,7 +279,7 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ isOpen, module, o
           </div>
 
           {/* Level 2 Game Data Section - Only show for Module 1 */}
-          {module.id === 1 && (
+          {[1, 2, 3, 4].includes(module.id) && (
             <>
               <div className={`mt-4 ${isMobileLandscape ? 'mt-3' : isMobile ? 'mt-4' : 'mt-6'}`}>
                 {isLoadingData ? (
@@ -309,7 +310,7 @@ const ModuleDetailModal: React.FC<ModuleDetailModalProps> = ({ isOpen, module, o
                     <p className={`text-gray-600 ${
                       isMobileLandscape ? 'text-xs' : isMobile ? 'text-xs' : 'text-sm'
                     }`}>
-                      No Level 2 game data found for Module 1
+                      No Level 2 data found.
                     </p>
                   </div>
                 ) : (
