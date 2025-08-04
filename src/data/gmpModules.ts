@@ -3,7 +3,7 @@ import type { Module } from '../types';
 export const GMP_MODULES: Module[] = [
   {
     id: 1,
-    title: "GMP & Regulations",
+    title: "Medical Coding",
     description: "Foundation of pharmaceutical regulations and GMP principles",
     icon: "📋",
     color: "#4F46E5",
