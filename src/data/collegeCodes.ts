@@ -8,7 +8,7 @@ export const collegeCodes = [
   "bru09", "msu117", "mku302", "mku604", "per103", "bru01", "per105", "per104", "mku259",
   "per185", "mku628dfc", "mtu6", "aluau16", "msu311", "per177", "aluau03", "msu102",
   "per176", "per130", "bru15", "per122", "msu106", "per203", "per165", "msu319", "per188",
-  "per124", "aluau44", "per145", "per189", "mku251", "mku205", "per119", "per192", "mku263",
+  "per124", "aluau44", "per145", "mku251", "mku205", "per119", "per192", "mku263",
   "aluau02", "mku618", "msu313", "mku256", "mku324", "MKU605SFC", "mtu5", "per193",
   "bru1021008", "aluau05", "aluau20", "msu107", "aluau18", "per141", "per126", "msu302",
   "msu123", "per117", "msu219", "bru17", "bruau", "mtu7", "aluau15", "per197", "brubu",
@@ -35,5 +35,5 @@ export const collegeCodes = [
   "bdu528", "bdu78", "anm202", "bdu595", "mku332", "BDU774", "msu318", "bruah", "bruab",
   "per208", "brubd", "bru3d", "per218", "bru4y", "bru4q", "bruaj", "bru36", "bru4z",
   "bru4j", "per131", "bru12", "bru4x", "bru5b", "bru34", "per132", "bru28", "per148",
-  "bru3j", "bruaa", "BRU31"
+  "bru3j", "bruaa", "BRU31", "per204", "per189", "per220",
 ];
