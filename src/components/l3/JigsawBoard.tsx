@@ -1180,8 +1180,68 @@ export const JigsawBoard: React.FC = () => {
 
         // Set completion state with delay for UX
         if (isScenarioComplete) {
-          setTimeout(() => {
+          setTimeout(async () => {
             setIsComplete(true);
+
+            // === LEVEL3_HISTORY AND LEVEL_PROGRESS UPDATE ===
+            // If this is the last scenario, save to level3_history table and update level_progress
+            const isLastScenario = scenarioIndex >= (scenarios?.length ?? 0) - 1;
+            if (isLastScenario && user?.id && currentModule) {
+              let moduleId: string = "1";
+              let moduleIdNumber: number = 1;
+              if (
+                typeof currentModule === "object" &&
+                currentModule !== null &&
+                "id" in currentModule
+              ) {
+                moduleId = (currentModule as any).id.toString();
+                moduleIdNumber = Number((currentModule as any).id) || 1;
+              } else if (typeof currentModule === "number") {
+                moduleId = (currentModule as number).toString();
+                moduleIdNumber = currentModule;
+              }
+
+              try {
+                // Create the final scenario result for this last scenario
+                const finalScenarioResult: ScenarioResult = {
+                  score: newScore,
+                  combo: newCombo,
+                  health,
+                  scenarioIndex,
+                };
+                const finalScenarioResults = [...scenarioResults, finalScenarioResult];
+
+                // Save entire Level 3 data to history table
+                await saveLevel3DataToHistory(moduleId, finalScenarioResults, timer);
+                console.log('✅ Level 3 completion saved to history');
+
+                // Update level_progress table to mark Level 3 as completed
+                const levelId = 3;
+                const { error: levelProgressError } = await supabase
+                  .from('level_progress')
+                  .upsert([
+                    {
+                      user_id: user.id,
+                      module_id: moduleIdNumber,
+                      level_id: levelId,
+                      is_completed: true,
+                      updated_at: new Date().toISOString(),
+                    }
+                  ], { onConflict: 'user_id,module_id,level_id' });
+
+                if (levelProgressError) {
+                  console.error('Error updating level_progress for completion:', levelProgressError);
+                } else {
+                  console.log('✅ Level progress updated for completion:', { 
+                    user_id: user.id, 
+                    module_id: moduleIdNumber, 
+                    level_id: levelId 
+                  });
+                }
+              } catch (err) {
+                console.error('Error saving Level 3 completion to history or updating level progress:', err);
+              }
+            }
           }, 400);
         }
 
