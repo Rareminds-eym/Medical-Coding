@@ -11,7 +11,6 @@ import { QuestionPanel } from './QuestionPanel';
 import { GameHeader } from './GameHeader';
 import Animation_manufacture from './animated_manufacture'
 import level4Service from './services';
-import { saveFinalScoreClean } from './utils/finalScoreSaver';
 import { 
   ChevronRight, 
   AlertTriangle, 
@@ -165,38 +164,17 @@ export const GameBoard2D: React.FC = () => {
 
       let recordId;
 
-      if (isSubmitButton) {
-        // For Submit button, we need to ensure clean score history
-        // First, delete any existing data for this module to start fresh
-        try {
-          await level4Service.deleteModuleData(user.id, gameState.moduleNumber || 1);
-          console.log('🧹 Cleared existing data for clean score history');
-        } catch (error) {
-          console.log('ℹ️ No existing data to clear (this is normal for first play)');
-        }
-
-        // Now save the final score with history management
-        recordId = await level4Service.upsertGameDataWithHistory(
-          user.id,
-          gameState.moduleNumber || 1,
-          gameState.score,
-          true, // Game completed
-          timer,
-          casesData
-        );
-        console.log('✅ Final game data saved via Submit button with clean history:', recordId);
-      } else {
-        // For automatic completion, use simple upsert to avoid duplicate history entries
-        recordId = await level4Service.upsertGameData(
-          user.id,
-          gameState.moduleNumber || 1,
-          gameState.score,
-          true, // Game completed
-          timer,
-          casesData
-        );
-        console.log('✅ Game completed and saved to Supabase (no history):', recordId);
-      }
+      // Always use the history function for both submit button and auto-completion
+      // This ensures score history is properly maintained across all play attempts
+      recordId = await level4Service.upsertGameDataWithHistory(
+        user.id,
+        gameState.moduleNumber || 1,
+        gameState.score,
+        true, // Game completed
+        timer,
+        casesData
+      );
+      console.log('✅ Game data saved with score history maintained:', recordId);
 
     } catch (error) {
       console.error('❌ Failed to complete game:', error);
@@ -1249,36 +1227,47 @@ className="absolute inset-0 w-full h-full z-0 pointer-events-none opacity-25 obj
                       }
                     }
 
-                    // Save game data to Supabase before showing popup
+                    // Save game data to Supabase using the bulletproof SQL function
                     try {
                       if (!user) {
                         throw new Error('User not authenticated');
                       }
 
-                      // Use clean save approach to ensure correct score history
-                      const result = await saveFinalScoreClean(
+                      // Prepare final cases data
+                      const casesData = {
+                        currentCase: gameState.currentCase,
+                        caseProgress: moduleCases.map((caseItem, index) => ({
+                          id: caseItem.id,
+                          answers: index <= gameState.currentCase ? gameState.answers : { violation: null, rootCause: null, impact: null },
+                          isCorrect: index <= gameState.currentCase,
+                          attempts: 1,
+                          timeSpent: index === gameState.currentCase ? timer : 0
+                        })),
+                        scoredQuestions: {
+                          [gameState.currentCase]: ["violation", "rootCause", "impact"]
+                        }
+                      };
+
+                      // Use the bulletproof SQL function that properly manages score history
+                      const recordId = await level4Service.upsertGameDataWithHistory(
                         user.id,
-                        { ...gameState, gameComplete: true },
+                        gameState.moduleNumber || 1,
+                        gameState.score,
+                        true, // Game completed
                         timer,
-                        moduleCases
+                        casesData
                       );
 
-                      if (result.success) {
-                        console.log('✅ Game data saved to Supabase successfully with clean score history');
-                      } else {
-                        throw new Error(result.error || 'Failed to save final score');
-                      }
+                      console.log('✅ Game data saved with bulletproof score history:', recordId);
 
                       // Check data after saving to verify
-                      if (user) {
-                        const savedData = await level4Service.getUserModuleData(user.id, gameState.moduleNumber || 1);
-                        console.log('📊 Data after save:', {
-                          mainScore: savedData?.score,
-                          scoreHistory: savedData?.score_history,
-                          timeArray: savedData?.time,
-                          isCompleted: savedData?.is_completed
-                        });
-                      }
+                      const savedData = await level4Service.getUserModuleData(user.id, gameState.moduleNumber || 1);
+                      console.log('📊 Data after save:', {
+                        mainScore: savedData?.score,
+                        scoreHistory: savedData?.score_history,
+                        timeHistory: savedData?.time_history,
+                        isCompleted: savedData?.is_completed
+                      });
                     } catch (error) {
                       console.error('❌ Failed to save game data to Supabase:', error);
                       console.error('Error details:', {

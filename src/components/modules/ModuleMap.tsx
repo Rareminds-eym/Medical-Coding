@@ -273,7 +273,7 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
             marginBottom: '0.5rem',
             textAlign: 'center',
           }}>
-            GMP Training Modules
+            MC Training Modules
           </h1>
           <p style={{
             fontSize: '1rem',
