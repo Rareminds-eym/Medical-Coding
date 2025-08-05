@@ -1,4 +1,3 @@
-
 // src/data/level3Scenarios.ts
 
 export interface PuzzlePiece {
