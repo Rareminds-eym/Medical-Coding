@@ -346,6 +346,7 @@ export const JigsawBoard: React.FC = () => {
   const [hasCheckedProgress, setHasCheckedProgress] = useState(false);
   const [isReplayMode, setIsReplayMode] = useState(false);
   const [userClosedScenario, setUserClosedScenario] = useState(false);
+  const [hasStartedGameplay, setHasStartedGameplay] = useState(false);
 
   // Enhanced scoring state
   const [incorrectAttempts, setIncorrectAttempts] = useState(0);
@@ -506,10 +507,19 @@ export const JigsawBoard: React.FC = () => {
           moduleId = (currentModule as number).toString();
         }
 
-        // Only update if there's meaningful progress (timer > 10 seconds)
-        // AND we have scenario results (indicating this is not a fresh restart)
-        // AND we're not currently resetting for replay
-        if (currentTimer > 10 && currentScenarioResults.length > 0 && !isResettingForReplayRef.current) {
+        // Only update if there's meaningful progress:
+        // 1. Timer > 10 seconds (user has been playing for a while)
+        // 2. We have scenario results (indicating completed scenarios exist) OR user has started gameplay
+        // 3. User has placed at least one piece (indicating actual gameplay)
+        // 4. We're not currently resetting for replay
+        const hasPlacedPieces = currentPlacedPiecesRef.current &&
+          (currentPlacedPiecesRef.current.violations.length > 0 ||
+           currentPlacedPiecesRef.current.actions.length > 0);
+
+        if (currentTimer > 10 &&
+            (currentScenarioResults.length > 0 || hasStartedGameplay) &&
+            hasPlacedPieces &&
+            !isResettingForReplayRef.current) {
           console.log('🕐 Updating timer in database:', {
             timer: currentTimer,
             moduleId,
@@ -537,7 +547,12 @@ export const JigsawBoard: React.FC = () => {
           console.log('🕐 Skipping timer update - insufficient progress or resetting:', {
             timer: currentTimer,
             scenarioResultsCount: currentScenarioResults.length,
-            isResetting: isResettingForReplayRef.current
+            hasPlacedPieces: hasPlacedPieces,
+            hasStartedGameplay: hasStartedGameplay,
+            isResetting: isResettingForReplayRef.current,
+            reason: currentTimer <= 10 ? 'timer too low' :
+                   (currentScenarioResults.length === 0 && !hasStartedGameplay) ? 'no progress yet' :
+                   !hasPlacedPieces ? 'no pieces placed' : 'resetting'
           });
         }
       } catch (err) {
@@ -549,7 +564,7 @@ export const JigsawBoard: React.FC = () => {
       console.log('🕐 Clearing periodic timer update interval');
       clearInterval(updateTimerInterval);
     };
-  }, [user?.id, currentModule, showFinalStats]); // Minimal dependencies
+  }, [user?.id, currentModule, showFinalStats, hasStartedGameplay]); // Include hasStartedGameplay
 
   // Debug logging for scenarios (disabled to prevent performance issues)
   // console.log('🎮 JigsawBoard: Scenarios state:', {
@@ -726,6 +741,10 @@ export const JigsawBoard: React.FC = () => {
           setScenarioIndex(currentScenarioIndex);
           setScenarioResults(allScenarioResults);
 
+          // If we have any progress (completed scenarios or placed pieces), mark as started
+          const hasAnyProgress = allScenarioResults.length > 0 || hasIncompleteScenario;
+          setHasStartedGameplay(hasAnyProgress);
+
           // Check if all scenarios are completed and show FinalStatsPopup
           const totalScenariosInModule = scenarios?.length ?? 0;
           const allScenariosCompleted = allScenarioResults.length === totalScenariosInModule &&
@@ -755,6 +774,7 @@ export const JigsawBoard: React.FC = () => {
           // Reset enhanced scoring state
           setIncorrectAttempts(0);
           setScenarioStartTime(Date.now());
+          setHasStartedGameplay(false); // Reset gameplay flag for fresh start
 
           // Show first scenario when starting fresh
           console.log("📋 Showing first scenario for fresh start");
@@ -776,6 +796,7 @@ export const JigsawBoard: React.FC = () => {
         // Reset enhanced scoring state
         setIncorrectAttempts(0);
         setScenarioStartTime(Date.now());
+        setHasStartedGameplay(false); // Reset gameplay flag for fresh start
 
         setShowScenario(true);
       }
@@ -1177,6 +1198,11 @@ export const JigsawBoard: React.FC = () => {
 
         // Update placed pieces state
         setPlacedPieces(updatedPlacedPieces);
+
+        // Mark that user has started actual gameplay (first piece placed)
+        if (!hasStartedGameplay) {
+          setHasStartedGameplay(true);
+        }
 
         // Set completion state with delay for UX
         if (isScenarioComplete) {
@@ -1941,6 +1967,7 @@ export const JigsawBoard: React.FC = () => {
                     // Reset enhanced scoring state
                     setIncorrectAttempts(0);
                     setScenarioStartTime(0); // Will be set when first scenario starts
+                    setHasStartedGameplay(false); // Reset gameplay flag for replay
 
                     // UI state - initially hide scenario dialog
                     setShowScenario(false);
