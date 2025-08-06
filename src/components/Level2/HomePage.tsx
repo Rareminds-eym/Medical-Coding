@@ -102,7 +102,7 @@ const HomePage: React.FC<HomePageProps> = ({ moduleId = '1', onExit }) => {
                     </div>
                     <div className="text-center">
                       <h1 className="text-sm font-black text-purple-100 pixel-text tracking-wider">
-                        GMP QUEST
+                        MC QUEST
                       </h1>
                       <div className="text-purple-200 text-xs font-bold tracking-widest">
                         CLASSIFICATION ADVENTURE
@@ -244,7 +244,7 @@ const HomePage: React.FC<HomePageProps> = ({ moduleId = '1', onExit }) => {
                     </div>
                     <div className="text-left">
                       <h1 className="text-4xl font-black text-white pixel-text tracking-wider">
-                        GMP QUEST
+                        MC QUEST
                       </h1>
                       <div className="text-yellow-200 text-sm font-bold tracking-widest">
                         CLASSIFICATION ADVENTURE

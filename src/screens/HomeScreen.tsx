@@ -6,6 +6,8 @@ import { Button } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
 import { motion } from "framer-motion";
 import { useDeviceLayout } from "../hooks/useOrientation";
+import { useGameUnlock } from "../hooks/useGameUnlock";
+import { X } from 'lucide-react';
 
 // Avatar options for modal
 const AVATAR_OPTIONS = [
@@ -57,6 +59,7 @@ const HomeScreen: React.FC = () => {
   const { user, logout } = useAuth(); // Get user and logout
   const [profileOpen, setProfileOpen] = useState(false);
   const layout = useDeviceLayout();
+  const { isGameLocked, isLoading } = useGameUnlock();
 
   // Avatar selection state, default to Intern 1, load from localStorage if available
   const [avatar, setAvatar] = useState<string>(
@@ -64,23 +67,33 @@ const HomeScreen: React.FC = () => {
   );
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
-  // Remove teamInfo state, only use user context
-  // Get collegeCode from user context if available
-  // (moved to below)
+  const [showGameLocked, setShowGameLocked] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("selectedAvatar", avatar);
   }, [avatar]);
 
   const startGame = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/modules");
   };
 
   const continueGame = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/modules");
   };
 
   const viewScores = () => {
+    if (isGameLocked) {
+      setShowGameLocked(true);
+      return;
+    }
     navigate("/scores");
   };
 
@@ -102,8 +115,6 @@ const HomeScreen: React.FC = () => {
     navigate("/auth", { replace: true });
   };
 
-  // Removed team info fetch logic, only using user context
-
   return (
     <div
       className={`min-h-screen w-screen relative bg-cover bg-center flex flex-col overflow-hidden${
@@ -122,7 +133,7 @@ const HomeScreen: React.FC = () => {
         {[
           {
             label: 'Instagram',
-            icon: <Icon icon="mdi:instagram" width={28} height={28} />, // color handled below
+            icon: <Icon icon="mdi:instagram" width={28} height={28} />,
             url: 'https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw==',
             color: 'hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400',
           },
@@ -354,14 +365,15 @@ const HomeScreen: React.FC = () => {
             }}
           >
             {[
-              { label: "Start Game", onClick: startGame },
-              { label: "Continue", onClick: continueGame },
-              { label: "View Scores", onClick: viewScores },
-              { label: "Instructions", onClick: viewInstructions },
+              { label: "Start Game", onClick: startGame, shouldDisable: true },
+              // { label: "Continue", onClick: continueGame, shouldDisable: true },
+              { label: "View Scores", onClick: viewScores, shouldDisable: true },
+              { label: "Instructions", onClick: viewInstructions, shouldDisable: false },
               {
                 label: "Logout",
                 onClick: handleLogout,
                 variant: "danger" as const,
+                shouldDisable: false,
               },
             ].map((btn, idx) => (
               <motion.li
@@ -382,7 +394,12 @@ const HomeScreen: React.FC = () => {
                       : "px-3 py-2 text-base min-w-[120px] !h-12 rounded-lg"
                   }
                 >
-                  {btn.label}
+                  <div className="flex items-center justify-center gap-2">
+                    {btn.shouldDisable && isGameLocked && (
+                      <Icon icon="mdi:lock" className="w-4 h-4" />
+                    )}
+                    {btn.label}
+                  </div>
                 </Button>
               </motion.li>
             ))}
@@ -401,7 +418,7 @@ const HomeScreen: React.FC = () => {
               className={
                 layout.isMobile && layout.isHorizontal
                   ? "h-[320px] w-[320px] mb-0 bottom-[-4px]"
-                  : "h-[450px] w-[430px] mb-0 relative" // remove bottom-[-6px] for clarity
+                  : "h-[450px] w-[430px] mb-0 relative"
               }
               style={
                 layout.isMobile && layout.isHorizontal
@@ -412,6 +429,76 @@ const HomeScreen: React.FC = () => {
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Game Lock Overlay */}
+      {!isLoading && isGameLocked && showGameLocked && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            className="text-center p-8  rounded-2xl shadow-xl max-w-md mx-4 backdrop-blur-lg border border-white/50 relative"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2, type: "spring" }}
+          >
+            {/* Close Button */}
+            <button
+              className="absolute top-3 rounded-full p-1 h-10 w-10 right-5 bg-white text-black hover:text-gray-700 transition-colors duration-200 flex items-center justify-center"
+              onClick={() => setShowGameLocked(false)}
+              aria-label="Close"
+              type="button"
+            >
+              <X size={20} />
+            </button>
+
+            <motion.div
+              className="mb-6"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.4, type: "spring", bounce: 0.6 }}
+            >
+              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-r from-red-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
+                <Icon 
+                  icon="mdi:lock" 
+                  className="w-12 h-12 text-white" 
+                />
+              </div>
+              <motion.h1
+                className="text-3xl font-bold text-white mb-2 drop-shadow-lg"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+              >
+                Game Locked
+              </motion.h1>
+              <motion.p
+                className="text-white/90 text-lg"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.8 }}
+              >
+                The game is currently locked. Please wait for it to be unlocked.
+              </motion.p>
+            </motion.div>
+            
+            <motion.div
+              className="space-y-4"
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 1 }}
+            >
+              <div className="flex justify-center space-x-1">
+                <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
