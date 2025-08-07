@@ -93,7 +93,7 @@ const HomePage: React.FC<HomePageProps> = ({ moduleId = '1', onExit }) => {
                 <span>EXIT</span>
               </button>
 
-              {/* MEDICODE MASTERY - Center */}
+              {/* MC QUEST - Center */}
               <div className="flex-1 flex justify-center">
                 <div className="pixel-border-thick bg-gradient-to-r from-purple-500 to-indigo-600 p-2 relative">
                   <div className="flex items-center space-x-2">
