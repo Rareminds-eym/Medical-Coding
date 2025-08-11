@@ -6,7 +6,7 @@ import AuthForm from '../components/auth/AuthForm'
 import { useAuth } from '../contexts/AuthContext' // Import useAuth
 
 const AuthPage: React.FC = () => {
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot-password'>('login')
   const navigate = useNavigate()
   const { user } = useAuth() // Get user from auth context
   const [isMobile, setIsMobile] = useState(false)
@@ -30,12 +30,19 @@ const AuthPage: React.FC = () => {
 
   const toggleAuthMode = () => {
     setAuthMode(prev => {
+      if (prev === 'forgot-password') {
+        return 'login';
+      }
       const next = prev === 'login' ? 'signup' : 'login';
       if (next === 'signup') {
         localStorage.setItem("selectedAvatar", "/characters/Intern1.png");
       }
       return next;
     });
+  }
+
+  const handleForgotPassword = () => {
+    setAuthMode('forgot-password');
   }
 
   // Mobile layout with scroll
@@ -88,7 +95,7 @@ const AuthPage: React.FC = () => {
               <AnimatedLogo />
             </div>
             <div className="flex-shrink-0 mb-4">
-              <AuthForm mode={authMode} onToggleMode={toggleAuthMode} />
+              <AuthForm mode={authMode} onToggleMode={toggleAuthMode} onForgotPassword={handleForgotPassword}  />
             </div>
             {/* Footer */}
             <div className="text-center mt-8 flex-shrink-0">
@@ -120,7 +127,7 @@ const AuthPage: React.FC = () => {
       >
         <div className="w-full max-w-4xl">
           <AnimatedLogo />
-          <AuthForm mode={authMode} onToggleMode={toggleAuthMode} />
+          <AuthForm mode={authMode} onToggleMode={toggleAuthMode} onForgotPassword={handleForgotPassword} />
           {/* Footer */}
           <div className="text-center mt-8">
             <p className="text-sm text-gray-500">
