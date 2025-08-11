@@ -5,7 +5,7 @@ import { useDeviceLayout } from '../../hooks/useOrientation';
 
 interface ModuleNodeProps {
   module: Module;
-  onSelect?: (id: number) => void;
+  onSelect?: (id: string) => void;
   isCurrentModule: boolean;
 }
 
@@ -28,6 +28,9 @@ const ModuleNode: React.FC<ModuleNodeProps> = ({ module, onSelect, isCurrentModu
   const titleMaxWidth = isCompact ? 96 : 144;
   const orbFontSize = isCompact ? 14 : 20;
   const badgePadding = isCompact ? '0.15rem 0.75rem' : '0.25rem 1.25rem';
+
+  // Check if this is a hackathon module
+  const isHackathonModule = module.id.startsWith('HL');
 
   const handleClick = () => {
     if (module.status === 'available' || module.status === 'completed') {
@@ -76,9 +79,13 @@ const ModuleNode: React.FC<ModuleNodeProps> = ({ module, onSelect, isCurrentModu
             height: orbSize,
             background:
               module.status === 'completed'
-                ? 'linear-gradient(to bottom, #10b981, #047857)'
+                ? isHackathonModule 
+                  ? 'linear-gradient(to bottom, #f59e0b, #d97706)' // Special golden gradient for completed hackathon modules
+                  : 'linear-gradient(to bottom, #10b981, #047857)'
                 : module.status === 'available'
-                ? 'linear-gradient(to bottom, #22d3ee, #0891b2)'
+                ? isHackathonModule
+                  ? 'linear-gradient(to bottom, #f59e0b, #d97706)' // Special golden gradient for available hackathon modules
+                  : 'linear-gradient(to bottom, #22d3ee, #0891b2)'
                 : 'linear-gradient(to bottom, #4b5563, #1f2937)',
           }}
         >
@@ -90,7 +97,9 @@ const ModuleNode: React.FC<ModuleNodeProps> = ({ module, onSelect, isCurrentModu
         {/* Orb glow effect */}
         {module.status === 'available' && (
           <div
-            className="absolute rounded-full bg-cyan-400 opacity-30 animate-ping"
+            className={`absolute rounded-full opacity-30 animate-ping ${
+              isHackathonModule ? 'bg-yellow-400' : 'bg-cyan-400'
+            }`}
             style={{ inset: 0, width: orbSize, height: orbSize }}
           ></div>
         )}
@@ -104,14 +113,21 @@ const ModuleNode: React.FC<ModuleNodeProps> = ({ module, onSelect, isCurrentModu
           height: platformHeight,
           background:
             module.status === 'completed'
-              ? 'linear-gradient(to bottom right, #6d28d9, #4c1d95, #312e81)'
+              ? isHackathonModule
+                ? 'linear-gradient(to bottom right, #f59e0b, #d97706, #b45309)' // Golden gradient for completed hackathon modules
+                : 'linear-gradient(to bottom right, #6d28d9, #4c1d95, #312e81)'
               : module.status === 'available'
-              ? 'linear-gradient(to bottom right, #7c3aed, #6d28d9, #3730a3)'
+              ? isHackathonModule
+                ? 'linear-gradient(to bottom right, #f59e0b, #d97706, #b45309)' // Golden gradient for available hackathon modules
+                : 'linear-gradient(to bottom right, #7c3aed, #6d28d9, #3730a3)'
               : 'linear-gradient(to bottom right, #374151, #1f2937, #111827)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          boxShadow: isHackathonModule && module.status !== 'locked' 
+            ? '0 8px 32px 0 rgba(245, 158, 11, 0.4)' // Golden glow for hackathon modules
+            : '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
           clipPath: 'ellipse(70% 100% at 50% 100%)',
           borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
-          outline: isCurrentModule && module.status === 'available' ? '4px solid #67e8f9' : undefined,
+          outline: isCurrentModule && module.status === 'available' ? 
+            (isHackathonModule ? '4px solid #fbbf24' : '4px solid #67e8f9') : undefined, // Golden outline for hackathon modules
           outlineOffset: isCurrentModule && module.status === 'available' ? '2px' : undefined,
           boxSizing: 'border-box',
         }}
