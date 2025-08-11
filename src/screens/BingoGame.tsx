@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { useBingoGame } from '../components/Level1/Hooks/useBingoGame';
 import { useTutorial } from '../components/Level1/Hooks/useTutorial';
 import { useDeviceLayout } from '../hooks/useOrientation';
@@ -12,14 +13,42 @@ import { Clock } from 'lucide-react';
 import LoaderScreen from './LoaderScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 import CompletedLineModal from '../components/Level1/CompletedLineModal';
+import { module1Level1Questions } from '../data/Level1/module1';
+import { module2Level1Questions } from '../data/Level1/module2';
+import { module3Level1Questions } from '../data/Level1/module3';
+import { module4Level1Questions } from '../data/Level1/module4';
 
 
+interface BingoQuestion {
+  term: string;
+  definition: string;
+}
 interface BingoGameProps {
-  questions?: any[];
-  moduleId?: string;
+  questions?: BingoQuestion[];
+  moduleId?: string | number;
 }
 
-const BingoGame: React.FC<BingoGameProps> = ({ questions, moduleId }) => {
+const BingoGame: React.FC<BingoGameProps> = (props) => {
+  // Get moduleId from props or from route params
+  const params = useParams<{ moduleId?: string }>();
+  const moduleId = props.moduleId || params.moduleId || '1';
+
+  // Dynamically load questions if not provided
+  const questions = useMemo(() => {
+    if (props.questions && props.questions.length === 25) return props.questions;
+    // Map moduleId to questions
+    const map: Record<string, BingoQuestion[]> = {
+      '1': module1Level1Questions,
+      'module1': module1Level1Questions,
+      '2': module2Level1Questions,
+      'module2': module2Level1Questions,
+      '3': module3Level1Questions,
+      'module3': module3Level1Questions,
+      '4': module4Level1Questions,
+      'module4': module4Level1Questions,
+    };
+    return map[String(moduleId)] || module1Level1Questions;
+  }, [props.questions, moduleId]);
   const {
     cells,
     completedLines,
