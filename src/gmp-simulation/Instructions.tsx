@@ -112,7 +112,7 @@ const Instructions: React.FC<InstructionsProps> = ({ onStart }) => {
             onClick={onStart}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 lg:px-8 rounded-lg transition-colors duration-200 text-sm lg:text-base mt-4"
           >
-            Start Simulation
+            Start Game
           </button>
         </div>
       </div>

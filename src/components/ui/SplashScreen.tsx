@@ -139,7 +139,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
               <div className="relative bg-gradient-to-br from-white to-gray-100 p-2 rounded-full shadow-2xl">
                 <div className="flex items-center justify-center space-x-3">
                   <div className="text-left">
-                    <img src="/logos/NM.png" alt="Company Logo" className={`${layout.isMobile && layout.isHorizontal ? 'h-16 w-36' : 'h-28 w-72'} rounded-xs shadow-lg py-4`} />
+                    <img src="/logos/tnskill.png" alt="Company Logo" className={`${layout.isMobile && layout.isHorizontal ? 'h-16 w-36' : 'h-28 w-72'} rounded-xs shadow-lg py-4`} />
                   </div>
                 </div>
               </div>
