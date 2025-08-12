@@ -117,7 +117,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
   onNext,
   currentAnswer,
 }) => {
-  // Change to arrays for multiple selections
+  // Single selections only - using arrays for consistency with existing interface
   const [selectedViolations, setSelectedViolations] = useState<string[]>(
     currentAnswer?.violation ? [currentAnswer.violation] : []
   );
@@ -252,35 +252,49 @@ const Level1Card: React.FC<Level1CardProps> = ({
   ]);
 
   const handleViolationSelect = (violation: string) => {
-    // If the item is already in the list, don't add it again
-    if (!selectedViolations.includes(violation)) {
-      const newViolations = [...selectedViolations, violation];
-      setSelectedViolations(newViolations);
-      // Mark the item as used
+    // Only allow one violation selection - replace existing selection
+    if (selectedViolations.length > 0) {
+      // Remove the previous selection from used items
       setUsedItems(prev => {
         const newUsedItems = new Set(prev);
-        newUsedItems.add(violation);
+        selectedViolations.forEach(v => newUsedItems.delete(v));
         return newUsedItems;
       });
-      // For backward compatibility with the onAnswer interface
-      onAnswer({ violation: newViolations.join(',') });
     }
+    
+    const newViolations = [violation]; // Only one selection allowed
+    setSelectedViolations(newViolations);
+    // Mark the item as used
+    setUsedItems(prev => {
+      const newUsedItems = new Set(prev);
+      newUsedItems.add(violation);
+      return newUsedItems;
+    });
+    // For backward compatibility with the onAnswer interface
+    onAnswer({ violation: newViolations.join(',') });
   };
 
   const handleRootCauseSelect = (rootCause: string) => {
-    // If the item is already in the list, don't add it again
-    if (!selectedRootCauses.includes(rootCause)) {
-      const newRootCauses = [...selectedRootCauses, rootCause];
-      setSelectedRootCauses(newRootCauses);
-      // Mark the item as used
+    // Only allow one root cause selection - replace existing selection
+    if (selectedRootCauses.length > 0) {
+      // Remove the previous selection from used items
       setUsedItems(prev => {
         const newUsedItems = new Set(prev);
-        newUsedItems.add(rootCause);
+        selectedRootCauses.forEach(r => newUsedItems.delete(r));
         return newUsedItems;
       });
-      // For backward compatibility with the onAnswer interface
-      onAnswer({ rootCause: newRootCauses.join(',') });
     }
+    
+    const newRootCauses = [rootCause]; // Only one selection allowed
+    setSelectedRootCauses(newRootCauses);
+    // Mark the item as used
+    setUsedItems(prev => {
+      const newUsedItems = new Set(prev);
+      newUsedItems.add(rootCause);
+      return newUsedItems;
+    });
+    // For backward compatibility with the onAnswer interface
+    onAnswer({ rootCause: newRootCauses.join(',') });
   };
 
   // Remove a violation from the list
@@ -376,7 +390,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
 
         {/* PROBLEM SCENARIO */}
         {!isMobileHorizontal && (
-          <div className="relative z-10 pixel-border bg-gradient-to-r from-cyan-600 to-blue-600 p-4 m-2 mb-0">
+          <div className="relative z-10 pixel-border bg-gradient-to-r from-gray-600 to-gray-700 p-4 m-2 mb-0">
             <h3 className="text-cyan-100 font-black pixel-text mb-2">
               PROBLEM SCENARIO
             </h3>
@@ -542,7 +556,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
               className="flex-1 animate-slideIn"
               style={{ animationDelay: "150ms" }}
             >
-              <div className="pixel-border-thick bg-gradient-to-br from-purple-900 to-purple-800 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
+              <div className="pixel-border-thick bg-gradient-to-r from-cyan-600 to-blue-600 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
                 {/* Header */}
                 <div className="relative z-10 p-3 flex-shrink-0">
                   <div className="flex items-center justify-between mb-1">

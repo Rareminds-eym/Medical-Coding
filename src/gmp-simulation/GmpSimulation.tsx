@@ -454,55 +454,63 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     }
     if (initialLevel === 1) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-teal-900 flex items-center justify-center p-2 lg:p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 lg:p-8 max-w-2xl w-full text-center">
-            <div className="flex justify-center mb-6">
-              <Factory className="w-12 h-12 lg:w-16 lg:h-16 text-blue-600" />
-            </div>
-            <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-4">
-              GMP Simulation Game
-            </h1>
-            <p className="text-gray-600 mb-6 lg:mb-8 text-sm lg:text-base">
-              Test your knowledge of Good Manufacturing Practices through
-              interactive case studies
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4 mb-6 lg:mb-8">
-              <div className="bg-blue-50 p-3 lg:p-4 rounded-lg">
-                <Clock className="w-6 h-6 lg:w-8 lg:h-8 text-blue-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-800 text-sm lg:text-base">
-                  60 Minutes
-                </h3>
-                <p className="text-gray-600 text-xs lg:text-sm">
-                  Complete all questions
-                </p>
-              </div>
-              <div className="bg-green-50 p-3 lg:p-4 rounded-lg">
-                <Trophy className="w-6 h-6 lg:w-8 lg:h-8 text-green-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-800 text-sm lg:text-base">
-                  2 Levels
-                </h3>
-                <p className="text-gray-600 text-xs lg:text-sm">
-                  Analysis & Solution
-                </p>
-              </div>
-              <div className="bg-orange-50 p-3 lg:p-4 rounded-lg">
-                <AlertTriangle className="w-6 h-6 lg:w-8 lg:h-8 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-800 text-sm lg:text-base">
-                  5 Cases
-                </h3>
-                <p className="text-gray-600 text-xs lg:text-sm">
-                  Random GMP scenarios
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={startGame}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 lg:px-8 rounded-lg transition-colors duration-200 text-sm lg:text-base"
-            >
-              Start Simulation
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-[#1a222b] flex items-center justify-center p-1 sm:p-2 lg:p-4">
+      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-3 sm:p-4 lg:p-8 shadow-xl max-w-2xl w-full text-center relative mx-1 sm:mx-2">
+    {/* Icon */}
+    <div className="flex justify-center mb-4">
+      <Factory className="w-10 h-10 text-black bg-cyan-300 p-2 border-2 border-black" />
+    </div>
+
+    {/* Title */}
+    <h1 className="text-white font-mono text-lg lg:text-2xl font-bold tracking-widest mb-2">
+      Medical Coding
+    </h1>
+
+    {/* Subtitle */}
+    <p className="text-white opacity-90 lg:mb-6 text-xs lg:text-sm tracking-wide">
+     Test your knowledge of Medical Coding<br />
+  through interactive case scenarios
+    </p>
+
+    {/* Info Boxes */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+      <div className="bg-blue-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
+        <Clock className="w-6 h-6 mx-auto mb-2" />
+        <h3 className="text-sm font-bold">60 MINUTES</h3>
+        <p className="text-xs">Complete all questions</p>
+      </div>
+      <div className="bg-green-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
+        <Trophy className="w-6 h-6 mx-auto mb-2" />
+        <h3 className="text-sm font-bold">2 LEVELS</h3>
+        <p className="text-xs">Analysis & Solution</p>
+      </div>
+      <div className="bg-orange-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
+        <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
+        <h3 className="text-sm font-bold">5 CASES</h3>
+        <p className="text-xs">Random MC scenarios</p>
+      </div>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex justify-center gap-3">
+      <button
+        onClick={startGame}
+        className="bg-green-500 hover:bg-green-600 border-2 border-black text-white font-bold py-2 px-6 shadow-[3px_3px_0px_black] transition-colors duration-200 text-sm"
+      >
+        START Level-1
+      </button>
+      <a
+        href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-red-500 hover:bg-red-600 border-2 border-black text-white font-bold py-2 px-6 shadow-[3px_3px_0px_black] transition-colors duration-200 text-sm"
+      >
+        WALKTHROUGH VIDEO
+      </a>
+    </div>
+  </div>
+</div>
+
       );
     } else {
       // Level 2 only UI (HL2)

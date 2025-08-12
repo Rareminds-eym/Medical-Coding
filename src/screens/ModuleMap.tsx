@@ -16,7 +16,8 @@ const ModuleMapScreen: React.FC = () => {
     if (userEmail === "hackathontest@gmail.com") {
       // For hackathontest@gmail.com: unlock HL1 & HL2, lock 1,2,3,4
       return initialModules.map(module => {
-        if (module.id === "HL1" || module.id === "HL2") {
+        if (module.id === "HL1") {
+          //  if (module.id === "HL1" || module.id === "HL2") {
           return { ...module, status: 'available' as const };
         } else if (module.id === "1" || module.id === "2" || module.id === "3" || module.id === "4") {
           return { ...module, status: 'locked' as const };
