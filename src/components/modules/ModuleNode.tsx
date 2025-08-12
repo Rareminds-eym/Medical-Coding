@@ -34,7 +34,14 @@ const ModuleNode: React.FC<ModuleNodeProps> = ({ module, onSelect, isCurrentModu
 
   const handleClick = () => {
     if (module.status === 'available' || module.status === 'completed') {
-      onSelect?.(module.id);
+      // Use the special handler for hackathon modules
+      if (isHackathonModule && module.id === 'HL1') {
+        // Navigate directly to the GMP simulation for HL1
+        window.location.href = '/modules/HL1';
+      } else {
+        // Use the standard handler for other modules
+        onSelect?.(module.id);
+      }
     }
   };
 

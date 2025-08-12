@@ -51,12 +51,14 @@ const ModuleMapScreen: React.FC = () => {
     const selectedModule = modules.find(m => m.id === moduleId);
     
     if (selectedModule && (selectedModule.status === 'available' || selectedModule.status === 'completed')) {
-      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-      if (!isNaN(numericId)) {
-        setCurrentModuleId(numericId);
+      // Handle numeric IDs for regular modules
+      if (typeof id === 'number') {
+        setCurrentModuleId(id);
+      } else if (!isNaN(parseInt(moduleId, 10))) {
+        setCurrentModuleId(parseInt(moduleId, 10));
       }
       
-      // In a real app, this would navigate to the module content
+      // Log selection for debugging
       console.log(`Selected module ${moduleId}: ${selectedModule.title}`);
       
       // Demo: Show alert for now
