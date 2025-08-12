@@ -31,6 +31,7 @@ import BingoGame from './screens/BingoGame';
 import SplashScreen from './components/ui/SplashScreen';
 import Score from './components/Scores/Score';
 import { InstallPrompt, OfflineIndicator } from './components/PWA';
+import DraggableGameCard from './screens/DraggableGameCard';
 import GameUnlockGuard from './components/GameUnlockGuard';
 
 
@@ -91,6 +92,7 @@ function App() {
         { path: '/modules/:moduleId/levels/:levelId', element: <ProtectedRoute><Level1Index /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId/levels/2', element: <ProtectedRoute><Level2 /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId/games', element: <ProtectedRoute><Level2GameNavigator /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
+        { path: '/modules/HL1', element: <ProtectedRoute><DraggableGameCard moduleId="HL1" mode="violation-root-cause" /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/reset-password', element: <ResetPassword />, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId/levels/3', element: <ProtectedRoute><Level3 /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },
         { path: '/modules/:moduleId/levels/4', element: <ProtectedRoute><Level4 /></ProtectedRoute>, errorElement: <RouteErrorBoundary /> },

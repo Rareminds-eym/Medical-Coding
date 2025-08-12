@@ -2,7 +2,7 @@ import React from 'react';
 import { Bot } from 'lucide-react';
 
 interface CharacterSpriteProps {
-  moduleId: number;
+  moduleId: string | number;
   platformWidth: number;
   platformSpacing: number;
 }
@@ -13,7 +13,25 @@ const CharacterSprite: React.FC<CharacterSpriteProps> = ({
   platformSpacing 
 }) => {
   // Calculate position based on module ID
-  const xPosition = (moduleId - 1) * (platformWidth + platformSpacing) + platformWidth / 2;
+  // Handle both numeric and string IDs (like HL1, HL2)
+  // Calculate the index for positioning
+  let moduleIndex: number;
+  
+  if (typeof moduleId === 'string') {
+    if (moduleId.startsWith('HL')) {
+      // Handle hackathon levels - position HL1 at position 5, HL2 at position 6
+      moduleIndex = parseInt(moduleId.replace('HL', '')) + 4;  // HL1 -> 5, HL2 -> 6
+    } else {
+      // Regular string IDs like "1", "2"
+      moduleIndex = parseInt(moduleId);
+    }
+  } else {
+    // Numeric IDs
+    moduleIndex = moduleId;
+  }
+  
+  // Position the character at the correct module
+  const xPosition = (moduleIndex - 1) * (platformWidth + platformSpacing) + platformWidth / 2;
 
   return (
     <div
@@ -23,6 +41,8 @@ const CharacterSprite: React.FC<CharacterSpriteProps> = ({
         transform: 'translateX(-50%)',
         marginTop: '-140px',
         animation: 'bobble 2.5s ease-in-out infinite',
+        // Ensure the character stays in the correct position
+        position: 'absolute',
       }}
     >
       <div className="relative flex flex-col items-center">
