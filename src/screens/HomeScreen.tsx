@@ -132,6 +132,12 @@ const HomeScreen: React.FC = () => {
       <div className="fixed top-1/2 left-0 z-40 -translate-y-1/2 flex flex-col gap-3 p-2 bg-white/10 rounded-r-2xl shadow-lg backdrop-blur-md border-l-4 border-blue-500">
         {[
           {
+            label: 'RareMinds',
+            icon: <img src="/icons/icon-128x128.png" alt="RareMinds Logo" className="w-7 h-7" />,
+            url: 'https://rareminds.in',
+            color: 'hover:bg-blue-200',
+          },
+          {
             label: 'Instagram',
             icon: <Icon icon="mdi:instagram" width={28} height={28} />,
             url: 'https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw==',
@@ -149,6 +155,12 @@ const HomeScreen: React.FC = () => {
             url: 'https://www.linkedin.com/company/rareminds/',
             color: 'hover:bg-blue-800',
           },
+          // {
+          //   label: 'YouTube',
+          //   icon: <Icon icon="mdi:youtube" width={28} height={28} color="#FF0000" />,
+          //   url: 'https://www.youtube.com/',
+          //   color: 'hover:bg-red-600',
+          // },
         ].map((item, idx) => (
           <motion.a
             key={item.label}
@@ -222,11 +234,10 @@ const HomeScreen: React.FC = () => {
       )}
       {/* Player avatar top right with dropdown */}
       <div
-        className={`absolute top-4 right-4 z-30${
-          layout.isMobile && layout.isHorizontal ? " scale-90" : ""
-        }`}
+        className={`absolute top-4 right-4 z-30 flex flex-col items-end gap-5${layout.isMobile && layout.isHorizontal ? " scale-90" : ""}`}
       >
-        <div className="relative">
+        {/* Profile Avatar with dropdown (top) */}
+        <div className="relative mb-2">
           <img
             src={avatar}
             alt="Player Avatar"
@@ -264,6 +275,54 @@ const HomeScreen: React.FC = () => {
             </div>
           )}
         </div>
+        {/* Instagram icon below profile */}
+        {/* <a
+          href="https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw=="
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 bg-white/80 border-2 border-blue-500 shadow-md hover:scale-110 hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400 mb-1"
+          title="Instagram"
+        >
+          <span className="transition-colors duration-200 group-hover:text-white text-gray-700">
+            <Icon icon="mdi:instagram" width={28} height={28} />
+          </span>
+        </a> */}
+        {/* Help (middle) */}
+        <a
+          href="https://us06web.zoom.us/j/86412214284?pwd=I8U47ItobcPBHvKgzmwsDAckIPBFYY.1" // Replace with your actual Zoom link
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-100 transition"
+          title="Help Desk Zoom"
+        >
+          <img src="/icons/helpdesk.png" alt="Help Desk" className="w-10 h-10 object-contain" />
+        </a>
+        {/* Logo (bottom) */}
+        <a
+          href="https://naanmudhalvan.tn.gov.in/"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Naan Mudhalvan Website"
+        >
+          <img
+            src="/logos/nmlogo.png"
+            alt="NM Logo"
+            className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400"
+          />
+        </a>
+
+        {/* <a
+          href="https://www.youtube.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="YouTube"
+        >
+          <img
+            src="/logos/nmlogo.png"
+            alt="NM Logo"
+            className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400"
+          />
+        </a> */}
       </div>
       {/* Profile Info Modal */}
       {showInfoModal && (
@@ -300,7 +359,7 @@ const HomeScreen: React.FC = () => {
               <Icon icon="mdi:code-tags" width={38} height={38} />
             </span>
             <span
-              className="bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-600 bg-clip-text text-transparent drop-shadow-lg shadow-blue-200 px-1 rounded-lg"
+              className="bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-600 bg-clip-text text-transparent drop-shadow-lg shadow-blue-200 px-1 rounded-lg text-3xl lg:text-5xl"
               style={{
                 WebkitTextStroke: '2px #2563eb',
                 filter: 'drop-shadow(0 2px 4px #38bdf8)'
@@ -336,7 +395,7 @@ const HomeScreen: React.FC = () => {
               `}</style>
             </svg>
           </span>
-          <span className="block text-base md:text-lg font-semibold text-cyan-200 mt-2 tracking-normal animate-fade-in-slow">
+          <span className="block text-base md:text-lg font-bold text-black mt-2 tracking-normal animate-fade-in-slow">
             ACE IN CODING!
           </span>
         </motion.h1>
