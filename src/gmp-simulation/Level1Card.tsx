@@ -1,19 +1,20 @@
-import React, { useState } from "react";
-import { Search, ChevronRight, CheckCircle, Target, X } from "lucide-react";
 import {
   DndContext,
+  DragEndEvent,
   DragOverlay,
-  closestCenter,
+  DragStartEvent,
+  MouseSensor,
   PointerSensor,
   TouchSensor,
-  MouseSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
+  pointerWithin,
+  rectIntersection,
   useDraggable,
   useDroppable,
+  useSensor,
+  useSensors
 } from "@dnd-kit/core";
+import { CheckCircle, ChevronRight, Search, Target } from "lucide-react";
+import React, { useState } from "react";
 import { useDeviceLayout } from "../hooks/useOrientation";
 import { Question } from "./HackathonData";
 
@@ -40,6 +41,7 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
   type,
   isSelected,
 }) => {
+  const { isMobile } = useDeviceLayout();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
@@ -56,17 +58,53 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
     ? "pixel-border bg-gradient-to-r from-cyan-500 to-blue-500"
     : "pixel-border bg-gradient-to-r from-gray-600 to-gray-700 hover:from-cyan-600 hover:to-blue-600";
 
+  // Mobile-optimized event handlers
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isMobile) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleTouchStart = () => {
+    // Prevent scrolling when touching draggable items on mobile
+    if (isMobile) {
+      // Strong haptic feedback for mobile
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+    }
+  };
+
+  // Enhanced listeners for mobile touch
+  const enhancedListeners = isMobile ? {
+    ...listeners,
+    onTouchStart: handleTouchStart,
+  } : {
+    ...listeners,
+  };
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      {...listeners}
+      style={{
+        ...style,
+        ...(isMobile && {
+          touchAction: 'none',
+          WebkitTouchAction: 'none',
+          msTouchAction: 'none',
+        }),
+      }}
+      {...enhancedListeners}
       {...attributes}
-      className={`p-2 cursor-grab transition-all select-none touch-none ${colorClasses} ${
-        isDragging ? "opacity-0" : ""
-      }`}
+      onClick={handleClick}
+      className={`p-2 cursor-grab active:cursor-grabbing transition-all select-none ${
+        isMobile ? "touch-manipulation" : "touch-none"
+      } ${colorClasses} ${isDragging ? "opacity-0" : ""}`}
     >
-      <span className="text-white text-xs font-bold pixel-text">{text}</span>
+      <span className="text-white text-xs font-bold pixel-text pointer-events-none">
+        {text}
+      </span>
     </div>
   );
 };
@@ -75,21 +113,19 @@ const DraggableItem: React.FC<DraggableItemProps> = ({
 interface DroppableZoneProps {
   id: string;
   type: "violation" | "rootCause";
-  selectedItems: string[];
-  onRemove: (item: string) => void;
+  selectedItem: string;
   children: React.ReactNode;
 }
 
 const DroppableZone: React.FC<DroppableZoneProps> = ({
   id,
   type,
-  selectedItems,
-  onRemove,
+  selectedItem,
   children,
 }) => {
   const { isOver, setNodeRef } = useDroppable({
     id,
-    data: { type },
+    data: { type, isDropZone: true },
   });
 
   return (
@@ -117,15 +153,12 @@ const Level1Card: React.FC<Level1CardProps> = ({
   onNext,
   currentAnswer,
 }) => {
-  // Single selections only - using arrays for consistency with existing interface
-  const [selectedViolations, setSelectedViolations] = useState<string[]>(
-    currentAnswer?.violation ? [currentAnswer.violation] : []
+  const [selectedViolation, setSelectedViolation] = useState(
+    currentAnswer?.violation || ""
   );
-  const [selectedRootCauses, setSelectedRootCauses] = useState<string[]>(
-    currentAnswer?.rootCause ? [currentAnswer.rootCause] : []
+  const [selectedRootCause, setSelectedRootCause] = useState(
+    currentAnswer?.rootCause || ""
   );
-  // Track used items to remove them from the source area
-  const [usedItems, setUsedItems] = useState<Set<string>>(new Set());
   const [activeItem, setActiveItem] = useState<{
     text: string;
     type: "violation" | "rootCause";
@@ -133,83 +166,78 @@ const Level1Card: React.FC<Level1CardProps> = ({
   const { isMobile, isHorizontal } = useDeviceLayout();
   const isMobileHorizontal = isMobile && isHorizontal;
 
-  // Add CSS for scrollbar styling
-  React.useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .scrollbar-thin::-webkit-scrollbar {
-        width: 6px;
-      }
-      .scrollbar-thin::-webkit-scrollbar-track {
-        background-color: rgba(30, 41, 59, 0.5);
-        border-radius: 3px;
-      }
-      .scrollbar-thin::-webkit-scrollbar-thumb {
-        background-color: rgba(59, 130, 246, 0.7);
-        border-radius: 3px;
-      }
-      .scrollbar-thumb-purple-500::-webkit-scrollbar-thumb {
-        background-color: rgba(168, 85, 247, 0.7);
-      }
-      .scrollbar-thumb-blue-500::-webkit-scrollbar-thumb {
-        background-color: rgba(59, 130, 246, 0.7);
-      }
-      .scrollbar-track-purple-700::-webkit-scrollbar-track {
-        background-color: rgba(126, 34, 206, 0.2);
-      }
-      .scrollbar-track-blue-700::-webkit-scrollbar-track {
-        background-color: rgba(29, 78, 216, 0.2);
-      }
-    `;
-    document.head.appendChild(style);
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
-
   // Reset fields when question changes
   React.useEffect(() => {
-    const initialViolations = currentAnswer?.violation ? [currentAnswer.violation] : [];
-    const initialRootCauses = currentAnswer?.rootCause ? [currentAnswer.rootCause] : [];
-    
-    setSelectedViolations(initialViolations);
-    setSelectedRootCauses(initialRootCauses);
-    
-    // Update used items based on what's already selected
-    const newUsedItems = new Set<string>();
-    initialViolations.forEach(v => newUsedItems.add(v));
-    initialRootCauses.forEach(r => newUsedItems.add(r));
-    setUsedItems(newUsedItems);
-    
+    setSelectedViolation(currentAnswer?.violation || "");
+    setSelectedRootCause(currentAnswer?.rootCause || "");
     setActiveItem(null);
   }, [question.id, currentAnswer]);
 
-  // Setup sensors for drag and drop with higher thresholds to prevent click selection
+  // Custom collision detection that only allows drops on specific zones
+  const customCollisionDetection = (args: any) => {
+    // First, let's try pointer intersection for more precise detection
+    const pointerCollisions = pointerWithin(args);
+
+    if (pointerCollisions.length > 0) {
+      // Filter to only our designated drop zones
+      const validCollisions = pointerCollisions.filter((collision: any) => {
+        const validIds = ["violation-zone", "rootCause-zone"];
+        return validIds.includes(collision.id);
+      });
+
+      if (validCollisions.length > 0) {
+        return validCollisions;
+      }
+    }
+
+    // Fallback to rectangle intersection but still filter
+    const rectCollisions = rectIntersection(args);
+    const validRectCollisions = rectCollisions.filter((collision: any) => {
+      const validIds = ["violation-zone", "rootCause-zone"];
+      return validIds.includes(collision.id);
+    });
+
+    return validRectCollisions.length > 0 ? validRectCollisions : [];
+  };
+  // Setup sensors for drag and drop with mobile-optimized constraints
   const sensors = useSensors(
-    // Mouse sensor for desktop - requires significant movement
+    // Mouse sensor for desktop
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 10, // Require 10px movement to start drag
+        distance: 3, // Very low distance
       },
     }),
-    // Touch sensor with delay to distinguish from taps
+    // Touch sensor with minimal constraints for mobile
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 250, // 250ms delay to prevent tap selection
-        tolerance: 5, // Lower tolerance after delay
+        delay: 0, // No delay for immediate response
+        tolerance: 15, // High tolerance for easier touch
       },
     }),
-    // Pointer sensor with higher distance threshold
+    // Pointer sensor with ultra-low constraints for mobile
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: isMobile ? 8 : 10, // Higher distance requirement
-        delay: isMobile ? 100 : 0, // Small delay on mobile
-        tolerance: 5, // Lower tolerance
+        distance: isMobile ? 1 : 3, // Almost no distance for mobile
+        delay: 0, // No delay
+        tolerance: isMobile ? 15 : 5, // Very high tolerance for mobile
       },
     })
   );
 
-  const canProceed = selectedViolations.length > 0 && selectedRootCauses.length > 0;
+  const canProceed = selectedViolation && selectedRootCause;
+
+  // Simple haptic feedback for mobile devices
+  const triggerHapticFeedback = (intensity: 'light' | 'medium' | 'strong' = 'light') => {
+    if (!isMobile || !('vibrate' in navigator)) return;
+
+    const patterns = {
+      light: 15,
+      medium: 30,
+      strong: [40, 20, 40]
+    };
+
+    navigator.vibrate(patterns[intensity]);
+  };
 
   // Shuffle function
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -223,104 +251,36 @@ const Level1Card: React.FC<Level1CardProps> = ({
 
   // Combine and shuffle violations and root causes
   const combinedOptions = React.useMemo(() => {
-    // Filter out options that have already been placed in drop zones
-    const violations = question.violationOptions
-      .filter(option => !usedItems.has(option)) // Filter out used items
-      .map((option, index) => ({
-        id: `violation-${index}`,
-        text: option,
-        type: "violation" as const,
-        isSelected: selectedViolations.includes(option),
-      }));
+    const violations = question.violationOptions.map((option, index) => ({
+      id: `violation-${index}`,
+      text: option,
+      type: "violation" as const,
+      isSelected: selectedViolation === option,
+    }));
 
-    const rootCauses = question.rootCauseOptions
-      .filter(option => !usedItems.has(option)) // Filter out used items
-      .map((option, index) => ({
-        id: `rootCause-${index}`,
-        text: option,
-        type: "rootCause" as const,
-        isSelected: selectedRootCauses.includes(option),
-      }));
+    const rootCauses = question.rootCauseOptions.map((option, index) => ({
+      id: `rootCause-${index}`,
+      text: option,
+      type: "rootCause" as const,
+      isSelected: selectedRootCause === option,
+    }));
 
     return shuffleArray([...violations, ...rootCauses]);
   }, [
     question.violationOptions,
     question.rootCauseOptions,
-    selectedViolations,
-    selectedRootCauses,
-    usedItems, // Add usedItems as dependency
+    selectedViolation,
+    selectedRootCause,
   ]);
 
   const handleViolationSelect = (violation: string) => {
-    // Only allow one violation selection - replace existing selection
-    if (selectedViolations.length > 0) {
-      // Remove the previous selection from used items
-      setUsedItems(prev => {
-        const newUsedItems = new Set(prev);
-        selectedViolations.forEach(v => newUsedItems.delete(v));
-        return newUsedItems;
-      });
-    }
-    
-    const newViolations = [violation]; // Only one selection allowed
-    setSelectedViolations(newViolations);
-    // Mark the item as used
-    setUsedItems(prev => {
-      const newUsedItems = new Set(prev);
-      newUsedItems.add(violation);
-      return newUsedItems;
-    });
-    // For backward compatibility with the onAnswer interface
-    onAnswer({ violation: newViolations.join(',') });
+    setSelectedViolation(violation);
+    onAnswer({ violation });
   };
 
   const handleRootCauseSelect = (rootCause: string) => {
-    // Only allow one root cause selection - replace existing selection
-    if (selectedRootCauses.length > 0) {
-      // Remove the previous selection from used items
-      setUsedItems(prev => {
-        const newUsedItems = new Set(prev);
-        selectedRootCauses.forEach(r => newUsedItems.delete(r));
-        return newUsedItems;
-      });
-    }
-    
-    const newRootCauses = [rootCause]; // Only one selection allowed
-    setSelectedRootCauses(newRootCauses);
-    // Mark the item as used
-    setUsedItems(prev => {
-      const newUsedItems = new Set(prev);
-      newUsedItems.add(rootCause);
-      return newUsedItems;
-    });
-    // For backward compatibility with the onAnswer interface
-    onAnswer({ rootCause: newRootCauses.join(',') });
-  };
-
-  // Remove a violation from the list
-  const handleRemoveViolation = (violation: string) => {
-    const newViolations = selectedViolations.filter(v => v !== violation);
-    setSelectedViolations(newViolations);
-    // Remove the item from used list so it reappears in the source area
-    setUsedItems(prev => {
-      const newUsedItems = new Set(prev);
-      newUsedItems.delete(violation);
-      return newUsedItems;
-    });
-    onAnswer({ violation: newViolations.join(',') });
-  };
-
-  // Remove a root cause from the list
-  const handleRemoveRootCause = (rootCause: string) => {
-    const newRootCauses = selectedRootCauses.filter(r => r !== rootCause);
-    setSelectedRootCauses(newRootCauses);
-    // Remove the item from used list so it reappears in the source area
-    setUsedItems(prev => {
-      const newUsedItems = new Set(prev);
-      newUsedItems.delete(rootCause);
-      return newUsedItems;
-    });
-    onAnswer({ rootCause: newRootCauses.join(',') });
+    setSelectedRootCause(rootCause);
+    onAnswer({ rootCause });
   };
 
   // Drag and Drop event handlers
@@ -333,20 +293,52 @@ const Level1Card: React.FC<Level1CardProps> = ({
 
     if (draggedData && draggedData.text) {
       setActiveItem(draggedData);
+      // Provide haptic feedback on drag start
+      triggerHapticFeedback('strong');
     }
   };
 
   const handleDragCancel = () => {
     setActiveItem(null);
+    // Light haptic feedback for cancelled drag
+    triggerHapticFeedback('light');
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
+    console.log("Drag end event:", {
+      activeId: active?.id,
+      overId: over?.id,
+      overData: over?.data?.current,
+    });
+
     // Always clear the active item first
     setActiveItem(null);
 
+    // If there's no drop target, don't do anything
     if (!over) {
+      console.log("Dropped outside of any drop zone - no 'over' detected");
+      triggerHapticFeedback('light'); // Cancelled drop
+      return;
+    }
+
+    // Strict validation - only allow drops on our specific zones
+    const validDropZoneIds = ["violation-zone", "rootCause-zone"];
+    if (!validDropZoneIds.includes(over.id as string)) {
+      console.log("Invalid drop zone ID:", over.id);
+      return;
+    }
+
+    // Check if the drop target has the isDropZone flag
+    const dropZoneData = over.data.current as {
+      type: "violation" | "rootCause";
+      isDropZone?: boolean;
+    };
+
+    // Only proceed if this is actually one of our designated drop zones
+    if (!dropZoneData?.isDropZone) {
+      console.log("Dropped on non-drop zone element:", over.id);
       return;
     }
 
@@ -354,28 +346,51 @@ const Level1Card: React.FC<Level1CardProps> = ({
       text: string;
       type: "violation" | "rootCause";
     };
-    const dropZoneData = over.data.current as {
-      type: "violation" | "rootCause";
-    };
 
-    // Validate drag data
-    if (!draggedData || !draggedData.text || !dropZoneData) {
-      console.warn("Invalid drag or drop data:", { draggedData, dropZoneData });
+    // Validate that we have proper drag data
+    if (!draggedData || !draggedData.text) {
+      console.warn("Invalid drag data:", draggedData);
       return;
     }
 
-    // Allow any option to be dropped in any zone
-    if (dropZoneData.type === "violation") {
+    // Validate that we have proper drop zone data
+    if (!dropZoneData || !dropZoneData.type) {
+      console.warn("Invalid drop zone data:", dropZoneData);
+      return;
+    }
+
+    // Final validation: exact ID and type matching
+    if (over.id === "violation-zone" && dropZoneData.type === "violation") {
+      console.log(
+        "✅ Successfully dropping item in violation zone:",
+        draggedData.text
+      );
       handleViolationSelect(draggedData.text);
-    } else if (dropZoneData.type === "rootCause") {
+      triggerHapticFeedback('strong'); // Successful drop
+    } else if (
+      over.id === "rootCause-zone" &&
+      dropZoneData.type === "rootCause"
+    ) {
+      console.log(
+        "✅ Successfully dropping item in root cause zone:",
+        draggedData.text
+      );
       handleRootCauseSelect(draggedData.text);
+      triggerHapticFeedback('strong'); // Successful drop
+    } else {
+      console.log("❌ Drop zone validation failed:", {
+        dropZoneId: over.id,
+        dropZoneType: dropZoneData.type,
+        draggedText: draggedData.text,
+      });
+      triggerHapticFeedback('light'); // Failed drop
     }
   };
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
@@ -390,7 +405,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
 
         {/* PROBLEM SCENARIO */}
         {!isMobileHorizontal && (
-          <div className="relative z-10 pixel-border bg-gradient-to-r from-gray-600 to-gray-700 p-4 m-2 mb-0">
+          <div className="relative z-10 pixel-border bg-gradient-to-r from-cyan-600 to-blue-600 p-4 m-2 mb-0">
             <h3 className="text-cyan-100 font-black pixel-text mb-2">
               PROBLEM SCENARIO
             </h3>
@@ -421,9 +436,11 @@ const Level1Card: React.FC<Level1CardProps> = ({
                     <h2 className="text-sm font-black text-cyan-300 pixel-text">
                       VIOLATION & ROOT CAUSE
                     </h2>
-                    <div className="text-xs text-gray-400 font-bold">
-                      ITEMS: {combinedOptions.length} | DRAG TO ZONES
-                    </div>
+                    {!isMobileHorizontal && (
+                      <div className="text-xs text-gray-400 font-bold">
+                        ITEMS: {combinedOptions.length} | DRAG TO ZONES
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -459,13 +476,13 @@ const Level1Card: React.FC<Level1CardProps> = ({
               className="flex-1 animate-slideIn"
               style={{ animationDelay: "0ms" }}
             >
-              <div className="pixel-border-thick bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
+              <div className="pixel-border-thick bg-gradient-to-br from-indigo-900 to-indigo-800 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
                 {/* Header */}
                 <div className="relative z-10 p-3 flex-shrink-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
-                        <div className="w-5 h-5 bg-blue-800 pixel-border flex items-center justify-center">
-                          <Target className="w-3 h-3 text-blue-300" />
+                      <div className="w-5 h-5 bg-blue-800 pixel-border flex items-center justify-center">
+                        <Target className="w-3 h-3 text-blue-300" />
                       </div>
                       <div>
                         <h3 className="text-xs font-black text-white pixel-text">
@@ -484,10 +501,9 @@ const Level1Card: React.FC<Level1CardProps> = ({
                   <DroppableZone
                     id="violation-zone"
                     type="violation"
-                    selectedItems={selectedViolations}
-                    onRemove={handleRemoveViolation}
+                    selectedItem={selectedViolation}
                   >
-                    {selectedViolations.length > 0 ? (
+                    {selectedViolation ? (
                       <div className="h-full flex flex-col">
                         {/* Status Header */}
                         <div className="text-center py-2 border-b border-blue-700/30">
@@ -495,42 +511,33 @@ const Level1Card: React.FC<Level1CardProps> = ({
                             <CheckCircle className="w-5 h-5 text-blue-300" />
                           </div>
                           <p className="text-blue-100 font-black pixel-text text-xs">
-                            VIOLATIONS DETECTED: {selectedViolations.length}
+                            VIOLATION DETECTED!
                           </p>
                         </div>
 
-                        {/* Dropped Items Display */}
-                        <div className="flex-1 p-3 space-y-3 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-blue-700">
-                          {selectedViolations.map((violation, index) => (
-                            <div key={`v-${index}`} className="w-full">
-                              <div className="pixel-border-thick bg-gradient-to-r from-blue-900 to-blue-700 p-3 relative overflow-hidden">
-                                {/* Background Pattern */}
-                                <div className="absolute inset-0 bg-pixel-pattern opacity-20"></div>
+                        {/* Dropped Item Display */}
+                        <div className="flex-1 p-3">
+                          <div className="w-full">
+                            <div className="pixel-border-thick bg-gradient-to-r from-blue-900 to-blue-700 p-3 relative overflow-hidden">
+                              {/* Background Pattern */}
+                              <div className="absolute inset-0 bg-pixel-pattern opacity-20"></div>
 
-                                {/* Content */}
-                                <div className="relative z-10">
-                                  <div className="flex items-center mb-2 pr-6">
-                                    <div className="w-6 h-6 bg-blue-800 pixel-border mr-2 flex items-center justify-center flex-shrink-0">
-                                      <Target className="w-4 h-4 text-blue-300" />
-                                    </div>
-                                    <p className="text-white text-xs font-black pixel-text leading-tight">
-                                      {violation}
-                                    </p>
-                                    <button 
-                                      onClick={() => handleRemoveViolation(violation)} 
-                                      className="absolute top-2 right-2 hover:text-red-300 transition-colors"
-                                      aria-label="Remove item"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
+                              {/* Content */}
+                              <div className="relative z-10">
+                                <div className="flex items-center mb-2">
+                                  <div className="w-6 h-6 bg-blue-800 pixel-border mr-2 flex items-center justify-center flex-shrink-0">
+                                    <Target className="w-4 h-4 text-blue-300" />
                                   </div>
+                                  <p className="text-white text-xs font-black pixel-text leading-tight">
+                                    {selectedViolation}
+                                  </p>
                                 </div>
-
-                                {/* Success Animation */}
-                                <div className="absolute top-1 right-1 w-2 h-2 bg-blue-800 rounded-full animate-ping"></div>
                               </div>
+
+                              {/* Success Animation */}
+                              <div className="absolute top-1 right-1 w-2 h-2 bg-blue-800 rounded-full animate-ping"></div>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -542,7 +549,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
                           DROP ZONE
                         </p>
                         <p className="text-white/60 text-xs">
-                          Drag violations here
+                          Drag violation here
                         </p>
                       </div>
                     )}
@@ -556,13 +563,13 @@ const Level1Card: React.FC<Level1CardProps> = ({
               className="flex-1 animate-slideIn"
               style={{ animationDelay: "150ms" }}
             >
-              <div className="pixel-border-thick bg-gradient-to-r from-cyan-600 to-blue-600 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
+              <div className="pixel-border-thick bg-gradient-to-br from-purple-900 to-purple-800 h-full relative overflow-hidden transition-all duration-300 rounded-lg flex flex-col">
                 {/* Header */}
                 <div className="relative z-10 p-3 flex-shrink-0">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center space-x-2">
-                        <div className="w-5 h-5 bg-purple-800 pixel-border flex items-center justify-center">
-                          <Search className="w-3 h-3 text-purple-300" />
+                      <div className="w-5 h-5 bg-purple-800 pixel-border flex items-center justify-center">
+                        <Search className="w-3 h-3 text-purple-300" />
                       </div>
                       <div>
                         <h3 className="text-xs font-black text-white pixel-text">
@@ -581,10 +588,9 @@ const Level1Card: React.FC<Level1CardProps> = ({
                   <DroppableZone
                     id="rootCause-zone"
                     type="rootCause"
-                    selectedItems={selectedRootCauses}
-                    onRemove={handleRemoveRootCause}
+                    selectedItem={selectedRootCause}
                   >
-                    {selectedRootCauses.length > 0 ? (
+                    {selectedRootCause ? (
                       <div className="h-full flex flex-col">
                         {/* Status Header */}
                         <div className="text-center py-2 border-b border-purple-700/30">
@@ -592,42 +598,33 @@ const Level1Card: React.FC<Level1CardProps> = ({
                             <CheckCircle className="w-5 h-5 text-purple-300" />
                           </div>
                           <p className="text-purple-100 font-black pixel-text text-xs">
-                            ROOT CAUSES FOUND: {selectedRootCauses.length}
+                            ROOT CAUSE FOUND!
                           </p>
                         </div>
 
-                        {/* Dropped Items Display */}
-                        <div className="flex-1 p-3 space-y-3 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-500 scrollbar-track-purple-700">
-                          {selectedRootCauses.map((rootCause, index) => (
-                            <div key={`rc-${index}`} className="w-full">
-                              <div className="pixel-border-thick bg-gradient-to-r from-purple-900 to-purple-700 p-3 relative overflow-hidden">
-                                {/* Background Pattern */}
-                                <div className="absolute inset-0 bg-pixel-pattern opacity-20"></div>
+                        {/* Dropped Item Display */}
+                        <div className="flex-1 p-3">
+                          <div className="w-full">
+                            <div className="pixel-border-thick bg-gradient-to-r from-purple-900 to-purple-700 p-3 relative overflow-hidden">
+                              {/* Background Pattern */}
+                              <div className="absolute inset-0 bg-pixel-pattern opacity-20"></div>
 
-                                {/* Content */}
-                                <div className="relative z-10">
-                                  <div className="flex items-center mb-2 pr-6">
-                                    <div className="w-6 h-6 bg-purple-800 pixel-border mr-2 flex items-center justify-center flex-shrink-0">
-                                      <Search className="w-4 h-4 text-purple-300" />
-                                    </div>
-                                    <p className="text-white text-xs font-black pixel-text leading-tight">
-                                      {rootCause}
-                                    </p>
-                                    <button 
-                                      onClick={() => handleRemoveRootCause(rootCause)} 
-                                      className="absolute top-2 right-2 hover:text-red-300 transition-colors"
-                                      aria-label="Remove item"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
+                              {/* Content */}
+                              <div className="relative z-10">
+                                <div className="flex items-center mb-2">
+                                  <div className="w-6 h-6 bg-purple-800 pixel-border mr-2 flex items-center justify-center flex-shrink-0">
+                                    <Search className="w-4 h-4 text-purple-300" />
                                   </div>
+                                  <p className="text-white text-xs font-black pixel-text leading-tight">
+                                    {selectedRootCause}
+                                  </p>
                                 </div>
-
-                                {/* Success Animation */}
-                                <div className="absolute top-1 right-1 w-2 h-2 bg-purple-800 rounded-full animate-ping"></div>
                               </div>
+
+                              {/* Success Animation */}
+                              <div className="absolute top-1 right-1 w-2 h-2 bg-purple-800 rounded-full animate-ping"></div>
                             </div>
-                          ))}
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -639,7 +636,7 @@ const Level1Card: React.FC<Level1CardProps> = ({
                           DROP ZONE
                         </p>
                         <p className="text-white/60 text-xs">
-                          Drag root causes here
+                          Drag root cause here
                         </p>
                       </div>
                     )}
