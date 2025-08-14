@@ -57,9 +57,9 @@ const Instructions: React.FC<InstructionsProps> = ({ onStart }) => {
           <div className="bg-emerald-900/80 p-4 rounded-lg text-center pixel-border">
             <Icon icon="mdi:clipboard-list-outline" className="w-8 h-8 text-emerald-300 mx-auto mb-2 animate-float" />
             <h3 className="font-semibold text-emerald-100 pixel-text">5 Cases</h3>
-            <p className="text-emerald-200 text-sm pixel-text">Random GMP Scenarios</p>
+            <p className="text-emerald-200 text-sm pixel-text">Random MC Scenarios</p>
           </div>
-        </div>
+        </div>Random MC scenarios
 
         {/* Game Objective */}
         <div className="bg-yellow-400/10 border-l-4 border-yellow-400 p-4 rounded-lg pixel-border animate-float mt-6">
@@ -112,7 +112,7 @@ const Instructions: React.FC<InstructionsProps> = ({ onStart }) => {
             onClick={onStart}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 lg:px-8 rounded-lg transition-colors duration-200 text-sm lg:text-base mt-4"
           >
-            Start Game
+            Start Simulation
           </button>
         </div>
       </div>

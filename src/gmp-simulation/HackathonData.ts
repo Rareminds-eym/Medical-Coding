@@ -9,755 +9,525 @@ export interface Question {
   correctSolution: string;
 }
 
-export const hackathonData: Question[] = [
+export const hackathonData: Question[] =[
   {
     "id": 1,
-    "caseFile": "During a BMR review, it was noted that several entries were written in pencil and later erased and rewritten in blue ink. No cross-outs were visible.",
+    // "title": "Picked symptoms instead of real illness (Pneumonia)",
+    "caseFile": "An adult came to the ER with cough, fever, and trouble breathing. The chest x‑ray later showed pneumonia, and the discharge summary clearly says ‘community‑acquired pneumonia.’ The coder looked at the ER note first and chose cough + fever as the main diagnosis. No one checked the discharge summary before billing. The bill now tells the story that the patient had only symptoms, not the real illness. This can confuse payers and change reports about hospital cases.",
     "violationOptions": [
-      "Equipment Qualification",
-      "Personnel Hygiene",
-      "Documentation Practices",
-      "Storage Conditions"
+      "Used symptoms as principal instead of the confirmed disease ",
+      "Used pneumonia as principal (correct)",
+      "Added an external cause for cough",
+      "Used 'unspecified viral illness' as a placeholder"
     ],
-    "correctViolation": "Documentation Practices",
+    "correctViolation": "Used symptoms as principal instead of the confirmed disease",
     "rootCauseOptions": [
-      "Operator unaware of permanent ink usage policy",
-      "Expired ink pen",
-      "Training material not laminated",
-      "Delayed deviation closure"
+      "Coder chose the first note (ER) and skipped the discharge summary ",
+      "Doctor hid the diagnosis on purpose",
+      "Pharmacy note had no medicines listed",
+      "The software blocked all pneumonia codes"
     ],
-    "correctRootCause": "Operator unaware of permanent ink usage policy",
+    "correctRootCause": "Coder chose the first note (ER) and skipped the discharge summary",
     "solutionOptions": [
-      "Introduce black pen SOP",
-      "Retrain all operators on GDP",
-      "Use invisible ink",
-      "Replace documentation team"
+      "Add a 'final diagnosis check' before billing; train coder; flag when symptoms are chosen over a final disease ",
+      "Delete all symptom codes from the system",
+      "Only accept ER notes as the principal source",
+      "Ask doctors to delete ER notes after admission"
     ],
-    "correctSolution": "Retrain all operators on GDP"
+    "correctSolution": "Add a 'final diagnosis check' before billing; train coder; flag when symptoms are chosen over a final disease"
   },
   {
     "id": 2,
-    "caseFile": "During a routine check, the storage area for finished products showed a temperature of 30\u00b0C for 8 hours, above the allowed 25\u00b0C. No alert was raised.",
+    // "title": "Laterality missing (Left knee surgery)",
+    "caseFile": "A patient had arthroscopy on the left knee. The consent, imaging, and operative note all say left side. The claim went out with ‘unspecified knee’ because the template did not ask for side, and the coder did not recheck the operation note. The payer cannot tell which leg was treated. That can lead to denials or wrong quality data. The story of care is incomplete without left/right.",
     "violationOptions": [
-      "Temperature Control",
-      "Water Testing",
-      "Vendor Qualification",
-      "Product Labeling"
+      "Left/right side (laterality) not captured ",
+      "Correct left knee code used",
+      "Added weeks of pregnancy",
+      "Added external place code"
     ],
-    "correctViolation": "Temperature Control",
+    "correctViolation": "Left/right side (laterality) not captured",
     "rootCauseOptions": [
-      "Sensor battery failure",
-      "Fire alarm malfunction",
-      "Power outage in canteen",
-      "Staff didn't wear gloves"
+      "Template didn’t ask for side and coder didn’t verify the op report ",
+      "Surgeon refused to help the coder",
+      "Images were low quality",
+      "Patient changed knees mid-surgery"
     ],
-    "correctRootCause": "Sensor battery failure",
+    "correctRootCause": "Template didnâ€™t ask for side and coder didnâ€™t verify the op report",
     "solutionOptions": [
-      "Freeze all batches",
-      "Add manual logbook",
-      "Install dual-alert sensor with auto-SMS",
-      "Change thermometer color"
+      "Make side a required field; link op note side to code picker; block 'unspecified' when side exists ",
+      "Remove all side info from reports",
+      "Use unspecified codes to save time",
+      "Bill both knees 'just in case'"
     ],
-    "correctSolution": "Install dual-alert sensor with auto-SMS"
+    "correctSolution": "Make side a required field; link op note side to code picker; block 'unspecified' when side exists"
   },
   {
     "id": 3,
-    "caseFile": "Two APIs with similar names were kept adjacent in the dispensing area. A batch was found to contain the wrong API.",
+    // "title": "Old stroke effects coded as new stroke",
+    "caseFile": "A 68‑year‑old has right‑side weakness from a stroke years ago. Today’s visit is for help with walking aids. The note says ‘history of stroke; residual weakness,’ and there are no new stroke symptoms. The coder chose an ‘acute stroke’ code from the problem list. This makes it look like a new emergency when it is not. The record should show long‑term effects of an old stroke, not a fresh event.",
     "violationOptions": [
-      "Cross-contamination",
-      "Dispensing & Material Handling",
-      "Packaging Control",
-      "Vendor Audit"
+      "Coded acute stroke; should have used late effect (sequela) ✅",
+      "Correctly coded residual weakness from old stroke",
+      "Added contrast CT code",
+      "Used external cause"
     ],
-    "correctViolation": "Dispensing & Material Handling",
+    "correctViolation": "Coded acute stroke; should have used late effect (sequela)",
     "rootCauseOptions": [
-      "Look-alike packaging with poor labeling",
-      "Warehouse humidity",
-      "Wrong barcoding",
-      "No insect traps"
+      "Problem list showed 'stroke' without dates; coder didn’t read visit details ✅",
+      "Radiology server was down",
+      "Nurses wrote in blue ink",
+      "Clinic closed on weekends"
     ],
-    "correctRootCause": "Look-alike packaging with poor labeling",
+    "correctRootCause": "Problem list showed 'stroke' without dates; coder didnâ€™t read visit details",
     "solutionOptions": [
-      "Purchase new raw material",
-      "Change vendor",
-      "Physically separate and relabel materials",
-      "Rotate raw materials monthly"
+      "Add 'current vs past' prompt; check dates; train on sequela vs active ✅",
+      "Always code acute for old issues",
+      "Delete the problem list",
+      "Let patients pick codes"
     ],
-    "correctSolution": "Physically separate and relabel materials"
+    "correctSolution": "Add 'current vs past' prompt; check dates; train on sequela vs active"
   },
   {
     "id": 4,
-    "caseFile": "CCTV footage revealed an operator entered a Grade B area wearing a lab coat instead of coveralls.",
+    // "title": "OB visit missing weeks of pregnancy",
+    "caseFile": "A pregnant patient comes for a clinic visit at about 32 weeks. The note shows blood pressure, baby’s status, and the problem ‘mild preeclampsia.’ The coder entered the problem code but forgot the simple code that tells how many weeks pregnant the patient is. Without weeks, others cannot judge risk or compare cases. Many payers expect the week code on OB visits. The story of the visit is missing a key detail.",
     "violationOptions": [
-      "Gowning SOP Violation",
-      "Pest Control",
-      "Label Control",
-      "Drainage Maintenance"
+      "Weeks of pregnancy (Z3A) missing ✅",
+      "Weeks coded correctly",
+      "Wrong modifier used",
+      "External cause added"
     ],
-    "correctViolation": "Gowning SOP Violation",
+    "correctViolation": "Weeks of pregnancy (Z3A) missing",
     "rootCauseOptions": [
-      "Lack of visual signage at entry point",
-      "Late lunch breaks",
-      "Footwear misplacement",
-      "Temperature fluctuations"
+      "OB template hides the weeks field; coder focused only on the problem code ✅",
+      "Ultrasound room was noisy",
+      "Lab had no gloves",
+      "Patient hid age"
     ],
-    "correctRootCause": "Lack of visual signage at entry point",
+    "correctRootCause": "OB template hides the weeks field; coder focused only on the problem code",
     "solutionOptions": [
-      "Suspend the operator",
-      "Paste area-specific gowning visuals + retrain",
-      "Change gown vendor",
-      "Build new changing room"
+      "Make weeks required; auto-pull from OB chart; block OB claims without weeks ✅",
+      "Never code weeks",
+      "Use 40 weeks for everyone",
+      "Ask payer to guess weeks"
     ],
-    "correctSolution": "Paste area-specific gowning visuals + retrain"
+    "correctSolution": "Make weeks required; auto-pull from OB chart; block OB claims without weeks"
   },
   {
     "id": 5,
-    "caseFile": "An internal audit revealed that 15 SOPs had not been reviewed in the last 2 years. Last review dates were expired.",
+    // "title": "Injury without 'how/where' details",
+    "caseFile": "A student fell off a bicycle on a city street and broke a wrist. The doctor wrote how it happened and where. The coder sent only the fracture code and skipped the ‘how/where’ parts. Later, the trauma data team could not tell if this was a road crash, a sports fall, or something else. That makes safety tracking and reports less useful. The case record looks unfinished.",
     "violationOptions": [
-      "Change Control",
-      "SOP Review & Documentation",
-      "Lab Equipment Validation",
-      "Line Clearance"
+      "External cause/activity/place codes missing ✅",
+      "Cause/place coded correctly",
+      "OB weeks added",
+      "Vaccine code added"
     ],
-    "correctViolation": "SOP Review & Documentation",
+    "correctViolation": "External cause/activity/place codes missing",
     "rootCauseOptions": [
-      "No SOP tracking calendar",
-      "Printer was slow",
-      "SOPs were hard to understand",
-      "SOP font was too small"
+      "Coder didn’t read triage; shortcut skipped the external cause screen ✅",
+      "Patient refused x-ray",
+      "Doctor used black pen",
+      "No elevators in ED"
     ],
-    "correctRootCause": "No SOP tracking calendar",
+    "correctRootCause": "Coder didnâ€™t read triage; shortcut skipped the external cause screen",
     "solutionOptions": [
-      "Archive old SOPs",
-      "Digital SOP tracker with auto-alerts",
-      "Create SOPs in Hindi",
-      "Hire SOP manager"
+      "Show an injury prompt for cause/activity/place; red banner if blank ✅",
+      "Never use cause codes",
+      "Add cause to every visit",
+      "Let patients choose the cause"
     ],
-    "correctSolution": "Digital SOP tracker with auto-alerts"
+    "correctSolution": "Show an injury prompt for cause/activity/place; red banner if blank"
   },
   {
     "id": 6,
-    "caseFile": "Microbial count in purified water exceeded limits in 3 batches. Investigation revealed irregular sanitization.",
+    // "title": "Debridement billed separately from simple repair",
+    "caseFile": "A 5‑cm forearm cut was cleaned, trimmed, and then closed with simple stitches. The cleaning and trimming were part of getting the wound ready. The coder billed the repair code and also billed a debridement code as if it were a separate extra service. For simple repairs, cleaning is included. The bill now looks like two services when there was one normal repair.",
     "violationOptions": [
-      "Water System Monitoring",
-      "Vendor Qualification",
-      "Stability Testing",
-      "Microbial Testing Kit"
+      "Billed an extra code for a step included in the main repair ✅",
+      "Only the repair code billed",
+      "Time codes used correctly",
+      "Contrast CT used"
     ],
-    "correctViolation": "Water System Monitoring",
+    "correctViolation": "Billed an extra code for a step included in the main repair",
     "rootCauseOptions": [
-      "Sanitization not scheduled weekly",
-      "RO system overloaded",
-      "Filter had algae",
-      "No gloves worn during testing"
+      "Didn’t know bundling rules; copied prior charges ✅",
+      "Doctor hid details",
+      "Lights too bright",
+      "Faded keyboard"
     ],
-    "correctRootCause": "Sanitization not scheduled weekly",
+    "correctRootCause": "Didnâ€™t know bundling rules; copied prior charges",
     "solutionOptions": [
-      "Conduct final rinse",
-      "Lock access to tanks",
-      "Schedule auto-sanitization every 7 days",
-      "Use UV stickers"
+      "Turn on bundling edits; pop-up 'included service'; short refresher ✅",
+      "Turn off all edits",
+      "Bill every step separately",
+      "Ask payer to ignore edits"
     ],
-    "correctSolution": "Schedule auto-sanitization every 7 days"
+    "correctSolution": "Turn on bundling edits; pop-up 'included service'; short refresher"
   },
   {
     "id": 7,
-    "caseFile": "A batch was shipped with old artwork \u2014 the new regulatory update was missed on the label.",
+    // "title": "Modifier-25 used without separate visit",
+    "caseFile": "A patient came with ear pain and had wax removed. The note shows only the short problem history and the procedure. The coder also billed a separate office visit using modifier‑25, but there was no extra, separate evaluation documented. This makes it look like two payable services instead of one. Payers may deny or ask for money back.",
     "violationOptions": [
-      "Artwork Management",
-      "Visual Inspection",
-      "Expiry Date Validation",
-      "Calibration"
+      "Used modifier-25 without a significant, separate E/M ✅",
+      "Only the procedure billed",
+      "Drug units correct",
+      "External cause added"
     ],
-    "correctViolation": "Artwork Management",
+    "correctViolation": "Used modifier-25 without a significant, separate E/M",
     "rootCauseOptions": [
-      "Artwork change not updated in master copy",
-      "HR didn\u2019t inform warehouse",
-      "Stock was too high",
-      "New label font unreadable"
+      "Template auto-suggested -25; coder didn’t verify the note ✅",
+      "Printer jam",
+      "Scales off",
+      "Patient late"
     ],
-    "correctRootCause": "Artwork change not updated in master copy",
+    "correctRootCause": "Template auto-suggested -25; coder didnâ€™t verify the note",
     "solutionOptions": [
-      "Lock the print room",
-      "Link artwork tracker to change control system",
-      "Color-code label reels",
-      "Use QR stickers"
+      "Use a 3-item checklist to prove separate E/M; block -25 unless checked; quick training ✅",
+      "Remove all modifiers",
+      "Always add -25",
+      "Bill E/M twice"
     ],
-    "correctSolution": "Link artwork tracker to change control system"
+    "correctSolution": "Use a 3-item checklist to prove separate E/M; block -25 unless checked; quick training"
   },
   {
     "id": 8,
-    "caseFile": "Same deviation recurred 4 times in 2 months. CAPA was marked as 'closed' each time.",
+    // "title": "Duplicate procedure from copy-paste",
+    "caseFile": "A small fatty lump (lipoma) was removed from the back. The operative note template copied a paragraph twice by mistake. The coder read fast and billed two removals. Follow‑up notes and the wound check mention only one incision. The claim tells a bigger story than what really happened.",
     "violationOptions": [
-      "Ineffective CAPA Management",
-      "SOP Duplication",
-      "Internal Audit",
-      "Product Sampling"
+      "Duplicate procedure billed for a single excision ✅",
+      "Single excision billed once",
+      "OB weeks added",
+      "Contrast code used"
     ],
-    "correctViolation": "Ineffective CAPA Management",
+    "correctViolation": "Duplicate procedure billed for a single excision",
     "rootCauseOptions": [
-      "CAPA just copied from previous incident",
-      "Operator changed",
-      "Vendor delayed raw material",
-      "SOP was misplaced"
+      "Template duplicated a paragraph; no count check vs op note ✅",
+      "Patient changed mid-case",
+      "OR clock stopped",
+      "Slow internet"
     ],
-    "correctRootCause": "CAPA just copied from previous incident",
+    "correctRootCause": "Template duplicated a paragraph; no count check vs op note",
     "solutionOptions": [
-      "Force RCA to change every time",
-      "Review CAPA effectiveness after 15 days",
-      "Track via WhatsApp",
-      "Add graphics to CAPA forms"
+      "Add 'unique procedure count' check; compare op note counts vs charges; fix template ✅",
+      "Allow unlimited duplicates",
+      "Hide the op note from coders",
+      "Bill three times to be safe"
     ],
-    "correctSolution": "Review CAPA effectiveness after 15 days"
+    "correctSolution": "Add 'unique procedure count' check; compare op note counts vs charges; fix template"
   },
   {
     "id": 9,
-    "caseFile": "An operator performed equipment cleaning without undergoing training for the new model.",
+    // "title": "Syringe billed separately with vaccine",
+    "caseFile": "A child received a vaccine in clinic. The claim shows the vaccine and the administration code, which is correct. It also shows a separate supply code for the syringe. The payer’s rule counts the syringe as part of giving the shot. The extra supply line can cause a denial or overbilling risk.",
     "violationOptions": [
-      "Personnel Training",
-      "Area Qualification",
-      "Equipment Hold Time",
-      "Raw Material Sampling"
+      "Separate supply billed when it is included in administration ✅",
+      "Supply included correctly",
+      "Right external cause used",
+      "Time-based visit code added"
     ],
-    "correctViolation": "Personnel Training",
+    "correctViolation": "Separate supply billed when it is included in administration",
     "rootCauseOptions": [
-      "Training matrix not updated",
-      "Forgot password",
-      "Overlapping shift",
-      "Toolbox missing"
+      "Charge master had an outdated rule; coder followed it ✅",
+      "Fridge was noisy",
+      "Reception printed in color",
+      "Nurse wore blue gown"
     ],
-    "correctRootCause": "Training matrix not updated",
+    "correctRootCause": "Charge master had an outdated rule; coder followed it",
     "solutionOptions": [
-      "Suspend operator",
-      "Link training to equipment ID",
-      "Move training to HR",
-      "Create stickers on machines"
+      "Update charge master; add payer policy tip; block syringe when admin present ✅",
+      "Bill all supplies separately",
+      "Remove vaccine admin codes",
+      "Let patients bring their own syringes"
     ],
-    "correctSolution": "Link training to equipment ID"
+    "correctSolution": "Update charge master; add payer policy tip; block syringe when admin present"
   },
   {
     "id": 10,
-    "caseFile": "Two different product batches were processed in the same mix tank with insufficient cleaning time between.",
+    // "title": "Drug units wrong on J-code",
+    "caseFile": "A chemo drug of 80 mg was given. The HCPCS code counts 10 mg per unit. The claim shows only 1 unit instead of 8. The bill now under‑reports the drug used and the payment will be wrong. Audits may flag this as a unit error.",
     "violationOptions": [
-      "Cleaning Validation",
-      "Glassware SOP",
-      "Shift Handover",
-      "Gowning Room Entry"
+      "Units on claim don’t match dose given ✅",
+      "Units matched dose",
+      "Left/right modifier correct",
+      "External cause added"
     ],
-    "correctViolation": "Cleaning Validation",
+    "correctViolation": "Units on claim donâ€™t match dose given",
     "rootCauseOptions": [
-      "Cleaning cycle time reduced to meet dispatch",
-      "Foam detergent used",
-      "Wrong pH",
-      "Label fell off"
+      "Coder didn’t read 'mg per unit'; no dose-to-unit calculator ✅",
+      "Nurse hid the MAR",
+      "Lights were off",
+      "Pharmacy changed label colors"
     ],
-    "correctRootCause": "Cleaning cycle time reduced to meet dispatch",
+    "correctRootCause": "Coder didnâ€™t read 'mg per unit'; no dose-to-unit calculator",
     "solutionOptions": [
-      "Introduce digital cleaning logs with checklists",
-      "Color the tank lid",
-      "Label with emojis",
-      "Reduce cleaning steps"
+      "Add dose-to-unit calculator + hard-stop edit; show 'unit = 10 mg' next to code; refresher ✅",
+      "Always bill 1 unit for simplicity",
+      "Round doses to nearest 100 mg",
+      "Ask payers to convert units later"
     ],
-    "correctSolution": "Introduce digital cleaning logs with checklists"
+    "correctSolution": "Add dose-to-unit calculator + hard-stop edit; show 'unit = 10 mg' next to code; refresher"
   },
   {
     "id": 11,
-    "caseFile": "During line clearance, remnants of previous batch material were found on the floor.",
+    // "title": "Visit level too high from auto-filled text",
+    "caseFile": "The clinic note looks long because the computer filled many ‘normal’ boxes. The real thinking by the provider was simple: one stable problem, no tests, low risk. The coder picked a high visit level because the note is long. This makes the visit look more complex than it was. Payers may see this as upcoding.",
     "violationOptions": [
-      "Line Clearance",
-      "Change Control",
-      "Batch Review",
-      "Pest Control"
+      "Upcoded visit level not supported by MDM/time ✅",
+      "Correct E/M level chosen by MDM",
+      "Correct place code added",
+      "Correct pregnancy week used"
     ],
-    "correctViolation": "Line Clearance",
+    "correctViolation": "Upcoded visit level not supported by MDM/time",
     "rootCauseOptions": [
-      "Poor visual inspection",
-      "Batch release delayed",
-      "Untrained QA",
-      "Late cleaning crew"
+      "Coder picked level by note length; didn’t review MDM ✅",
+      "Clinic had no chairs",
+      "Double-sided printing",
+      "Thermometer missing"
     ],
-    "correctRootCause": "Poor visual inspection",
+    "correctRootCause": "Coder picked level by note length; didnâ€™t review MDM",
     "solutionOptions": [
-      "Reinforce visual line clearance training",
-      "Assign janitor to QA",
-      "Color code dustbins",
-      "Freeze line movement"
+      "Teach 'code by MDM/time'; add level suggestion tied to MDM; audit auto-fill inflation ✅",
+      "Always pick highest level",
+      "Delete MDM section",
+      "Ban templates"
     ],
-    "correctSolution": "Reinforce visual line clearance training"
+    "correctSolution": "Teach 'code by MDM/time'; add level suggestion tied to MDM; audit auto-fill inflation"
   },
   {
     "id": 12,
-    "caseFile": "A weighing balance showed inconsistent readings across shifts.",
+    // "title": "Time-based visit with no time written",
+    "caseFile": "The provider billed a time-based visit and a prolonged service add‑on. The note says ‘long counseling,’ but does not list total minutes for that day. Time‑based codes need total time and what it covered. Without minutes, reviewers cannot confirm the level. The record is not complete for time coding.",
     "violationOptions": [
-      "Calibration",
-      "Cleaning",
-      "Temperature Control",
-      "Sampling"
+      "Time-based code used without total time ✅",
+      "Correct time documented",
+      "Correct laterality used",
+      "Supply billed correctly"
     ],
-    "correctViolation": "Calibration",
+    "correctViolation": "Time-based code used without total time",
     "rootCauseOptions": [
-      "Balance not calibrated per schedule",
-      "Operator leaned on table",
-      "Wrong voltage",
-      "Humidity too high"
+      "Provider forgot to record minutes; template lacks a time field ✅",
+      "Clock set to 24-hour format",
+      "Nurse wore a watch",
+      "No window in room"
     ],
-    "correctRootCause": "Balance not calibrated per schedule",
+    "correctRootCause": "Provider forgot to record minutes; template lacks a time field",
     "solutionOptions": [
-      "Implement monthly calibration tracker",
-      "Replace balance",
-      "Label balances with stickers",
-      "Shift balance to new room"
+      "Add mandatory time box; teach what counts; block time codes if time empty ✅",
+      "Estimate time later from memory",
+      "Replace time codes with flat fees",
+      "Let coders guess minutes"
     ],
-    "correctSolution": "Implement monthly calibration tracker"
+    "correctSolution": "Add mandatory time box; teach what counts; block time codes if time empty"
   },
   {
     "id": 13,
-    "caseFile": "QA found a broken thermometer in the storage area during a routine inspection.",
+    // "title": "CT billed 'with dye' when none used",
+    "caseFile": "A CT abdomen was ordered with contrast dye, but the dye was not used due to a shortage. The final radiology report clearly says ‘non‑contrast study.’ The claim still shows the with‑contrast code because charges pulled from the order screen. The codes should reflect what actually happened, not only what was planned. The current bill does not match the procedure performed.",
     "violationOptions": [
-      "Equipment Maintenance",
-      "Storage Practices",
-      "Glassware Handling",
-      "Change Control"
+      "Coded what was ordered, not what was done ✅",
+      "Correctly coded non-contrast CT",
+      "External cause added",
+      "OB weeks added"
     ],
-    "correctViolation": "Equipment Maintenance",
+    "correctViolation": "Coded what was ordered, not what was done",
     "rootCauseOptions": [
-      "No preventive maintenance log",
-      "No SOP for glass handling",
-      "Broken by cleaner",
-      "Overloaded racks"
+      "Charge pulled from the order, not from the final radiology report ✅",
+      "Radiologist whispered results",
+      "Scanner fan noisy",
+      "Printer out of paper"
     ],
-    "correctRootCause": "No preventive maintenance log",
+    "correctRootCause": "Charge pulled from the order, not from the final radiology report",
     "solutionOptions": [
-      "Set reminder for preventive maintenance",
-      "Use digital thermometer",
-      "Add SOP for glass check",
-      "Increase shelf spacing"
+      "Bill from finalized report; add 'contrast used?' checkbox; block mismatch ✅",
+      "Always code with contrast",
+      "Ask payer to choose",
+      "Delete the report"
     ],
-    "correctSolution": "Set reminder for preventive maintenance"
+    "correctSolution": "Bill from finalized report; add 'contrast used?' checkbox; block mismatch"
   },
   {
     "id": 14,
-    "caseFile": "Labels were found detached from containers due to humidity.",
+    // "title": "Heart stents—second artery missed",
+    "caseFile": "In the cath lab, stents were placed in two different heart arteries (for example LAD and RCA). The op note lists both vessels and device details. The charge system pulled only the first line. The claim now shows just one vessel treated. This under‑reports care and reduces correct payment.",
     "violationOptions": [
-      "Labeling and Packaging",
-      "Storage Practices",
-      "Hygiene",
-      "Vendor Compliance"
+      "Missed coding a second distinct vessel ✅",
+      "Coded both vessels correctly",
+      "Correct activity code used",
+      "Supply code for stent syringe added"
     ],
-    "correctViolation": "Labeling and Packaging",
+    "correctViolation": "Missed coding a second distinct vessel",
     "rootCauseOptions": [
-      "Wrong adhesive for environment",
-      "Staff error",
-      "Label text was long",
-      "Warehouse too bright"
+      "Charge capture pulled only first code; coder didn’t read full vessel list ✅",
+      "Cath lab lights dim",
+      "Contrast looked blue",
+      "Patient changed arteries"
     ],
-    "correctRootCause": "Wrong adhesive for environment",
+    "correctRootCause": "Charge capture pulled only first code; coder didnâ€™t read full vessel list",
     "solutionOptions": [
-      "Use environment-tested adhesive labels",
-      "Change storage room",
-      "Laminate labels",
-      "Print smaller labels"
+      "Use a vessel checklist (LAD/RCA/Cx…); match device log; import multi-line charges ✅",
+      "Always bill one vessel",
+      "Let payer add vessels",
+      "Hide cath report"
     ],
-    "correctSolution": "Use environment-tested adhesive labels"
+    "correctSolution": "Use a vessel checklist (LAD/RCA/Cxâ€¦); match device log; import multi-line charges"
   },
   {
     "id": 15,
-    "caseFile": "A new batch of raw materials was used before receiving QC approval.",
+    // "title": "Fracture follow-up billed as first visit",
+    "caseFile": "Three weeks after a wrist fracture, the patient returns for a routine healing check. The plan says ‘continue cast, routine healing.’ The coder billed the visit as an initial/active treatment encounter instead of follow‑up. That makes it look like new treatment was started when it was just routine care. The story in the bill does not match the note.",
     "violationOptions": [
-      "Material Management",
-      "Sampling",
-      "CAPA",
-      "Water Quality"
+      "Used initial/active encounter instead of routine follow-up ✅",
+      "Used subsequent encounter for routine healing",
+      "Added correct external cause",
+      "Used correct contrast code"
     ],
-    "correctViolation": "Material Management",
+    "correctViolation": "Used initial/active encounter instead of routine follow-up",
     "rootCauseOptions": [
-      "No physical quarantine system",
-      "QC forgot entry",
-      "Material expired",
-      "System auto-released"
+      "Coder missed 'routine healing'; default stayed 'initial' ✅",
+      "Clinic day was Tuesday",
+      "X-ray room painted blue",
+      "Consent stapled twice"
     ],
-    "correctRootCause": "No physical quarantine system",
+    "correctRootCause": "Coder missed 'routine healing'; default stayed 'initial'",
     "solutionOptions": [
-      "Implement red-tag quarantine area",
-      "Send reminder to QC",
-      "Use color bins",
-      "Check expiry dates weekly"
+      "Add encounter-type prompt (initial/subsequent/sequela); default to 'subsequent' when note says routine healing ✅",
+      "Always code initial",
+      "Remove encounter types",
+      "Ask patient which type"
     ],
-    "correctSolution": "Implement red-tag quarantine area"
+    "correctSolution": "Add encounter-type prompt (initial/subsequent/sequela); default to 'subsequent' when note says routine healing"
   },
   {
     "id": 16,
-    "caseFile": "A power failure during a critical mixing step was not documented.",
+    // "title": "Unsupported sepsis left on claim",
+    "caseFile": "A patient was treated for a urinary infection. Early notes said ‘rule out sepsis,’ but by discharge the doctor wrote ‘sepsis ruled out.’ The coder left the sepsis code on the claim anyway. This makes the bill show a serious condition that was not present. Payment and reports can be affected.",
     "violationOptions": [
-      "Deviation Management",
-      "Utility Monitoring",
-      "Production Logging",
-      "Preventive Maintenance"
+      "Left a ruled-out diagnosis on the final claim ✅",
+      "Removed ruled-out diagnosis",
+      "Added pregnancy weeks",
+      "Used correct laterality"
     ],
-    "correctViolation": "Deviation Management",
+    "correctViolation": "Left a ruled-out diagnosis on the final claim",
     "rootCauseOptions": [
-      "No awareness about reporting deviations",
-      "Power alert failed",
-      "Utility SOP was unclear",
-      "Back-up generator missing"
+      "Coder copied early 'r/o sepsis' and missed the final 'ruled out' note ✅",
+      "Blood culture machine loud",
+      "Bedsheets white",
+      "Patient ate late"
     ],
-    "correctRootCause": "No awareness about reporting deviations",
+    "correctRootCause": "Coder copied early 'r/o sepsis' and missed the final 'ruled out' note",
     "solutionOptions": [
-      "Create Deviation Awareness Campaign",
-      "Set up deviation hotline",
-      "Auto-log power fluctuations",
-      "Install UPS"
+      "Do a final-diagnosis reconciliation; flag 'ruled out' terms; peer review high-impact cases ✅",
+      "Keep all possible diagnoses",
+      "Ask payer to decide",
+      "Delete early notes"
     ],
-    "correctSolution": "Create Deviation Awareness Campaign"
+    "correctSolution": "Do a final-diagnosis reconciliation; flag 'ruled out' terms; peer review high-impact cases"
   },
   {
     "id": 17,
-    "caseFile": "Operators were seen bypassing metal detector in the packaging line.",
+    // "title": "Privacy risk—patient info sent from personal email",
+    "caseFile": "A coder needed to ask a doctor a question. Instead of using the hospital’s secure message tool, the coder sent a personal Gmail with the patient’s name and ID. No one reported this to the privacy officer. Patient information must be protected. Sending it through personal email is a risk and against policy.",
     "violationOptions": [
-      "Process Compliance",
-      "Equipment Usage",
-      "In-Process Checks",
-      "Safety Protocols"
+      "Sent PHI outside approved secure channels ✅",
+      "Used secure message system",
+      "Removed all patient info",
+      "Encrypted per policy"
     ],
-    "correctViolation": "Process Compliance",
+    "correctViolation": "Sent PHI outside approved secure channels",
     "rootCauseOptions": [
-      "Metal detector alarm was disabled",
-      "SOP unclear",
-      "Operator fatigue",
-      "Loose schedule"
+      "Didn’t know policy / no quick secure tool; deadline pressure ✅",
+      "Patient asked for Gmail",
+      "Hospital banned computers",
+      "Doctor prefers postcards"
     ],
-    "correctRootCause": "Metal detector alarm was disabled",
+    "correctRootCause": "Didnâ€™t know policy / no quick secure tool; deadline pressure",
     "solutionOptions": [
-      "Install auto-lock on metal detector alarm",
-      "Retrain all line operators",
-      "Add sensor-linked buzzer",
-      "Use colored floor arrows"
+      "Train on PHI rules; auto-block emails with PHI keywords; give a one-click secure query tool ✅",
+      "Allow any email if urgent",
+      "Print PHI and mail it",
+      "Store PHI on personal phones"
     ],
-    "correctSolution": "Install auto-lock on metal detector alarm"
+    "correctSolution": "Train on PHI rules; auto-block emails with PHI keywords; give a one-click secure query tool"
   },
   {
     "id": 18,
-    "caseFile": "Drain near production line was clogged, causing pooling of water for 2 hours.",
+    // "title": "Leading query to confirm heart failure",
+    "caseFile": "The note mentions possible fluid overload but does not clearly diagnose heart failure. The coder sent a query that said, ‘Please confirm acute heart failure,’ with a yes/no choice. This pushes the doctor toward one answer. Queries should be neutral and open. The current wording can change the record unfairly.",
     "violationOptions": [
-      "Facility Maintenance",
-      "Hygiene Control",
-      "Cleaning SOP",
-      "Pest Control"
+      "Used a leading (non-neutral) query ✅",
+      "Used a neutral, open-ended query",
+      "Did not send any query",
+      "Asked HIM to edit the note"
     ],
-    "correctViolation": "Facility Maintenance",
+    "correctViolation": "Used a leading (non-neutral) query",
     "rootCauseOptions": [
-      "Drain cleaning frequency was reduced",
-      "No drain trap",
-      "Improper floor slope",
-      "Cleaning team missed schedule"
+      "No standard query templates; pressure to finish; didn’t know neutral wording ✅",
+      "Provider hates questions",
+      "Office ran out of paper",
+      "Clinic door locked"
     ],
-    "correctRootCause": "Drain cleaning frequency was reduced",
+    "correctRootCause": "No standard query templates; pressure to finish; didnâ€™t know neutral wording",
     "solutionOptions": [
-      "Set fixed weekly drain cleaning schedule",
-      "Label all drain exits",
-      "Train team on GMP facility maps",
-      "Use high-pressure flush"
+      "Use neutral query templates; train staff; quick peer check for sensitive diagnoses ✅",
+      "Ban all queries",
+      "Use only yes/no queries",
+      "Let coders assign diagnoses"
     ],
-    "correctSolution": "Set fixed weekly drain cleaning schedule"
+    "correctSolution": "Use neutral query templates; train staff; quick peer check for sensitive diagnoses"
   },
   {
     "id": 19,
-    "caseFile": "The same gloves were used to handle two different product batches.",
+    // "title": "Old codes used after yearly update",
+    "caseFile": "New diagnosis codes started on October 1. The encoder software on some computers was not updated. For two weeks, staff kept using last year’s codes. Payers denied the claims as ‘invalid code for date of service.’ Revenue dropped and rework increased. A clear update process was missing.",
     "violationOptions": [
-      "Personal Hygiene",
-      "Cross Contamination",
-      "Batch Handling",
-      "Sterility Assurance"
+      "Used retired/invalid codes for date of service ✅",
+      "Used current codes",
+      "Added correct external cause",
+      "Used correct units"
     ],
-    "correctViolation": "Cross Contamination",
+    "correctViolation": "Used retired/invalid codes for date of service",
     "rootCauseOptions": [
-      "Lack of glove-changing SOP",
-      "Staff forgot",
-      "No disposal bin",
-      "Washing station far"
+      "No owner/checklist for updates; coders not alerted ✅",
+      "Sun set early",
+      "Reception smiled too much",
+      "Building has four floors"
     ],
-    "correctRootCause": "Lack of glove-changing SOP",
+    "correctRootCause": "No owner/checklist for updates; coders not alerted",
     "solutionOptions": [
-      "Install visual glove change reminders",
-      "Retrain on glove change points",
-      "Add glove log sheet",
-      "Label gloves by color"
+      "Assign update owner; pre/post checklist; alert banner on go-live; spot-audit first week ✅",
+      "Wait for denials to fix",
+      "Turn off updates",
+      "Ask payers to auto-map old codes"
     ],
-    "correctSolution": "Install visual glove change reminders"
+    "correctSolution": "Assign update owner; pre/post checklist; alert banner on go-live; spot-audit first week"
   },
   {
     "id": 20,
-    "caseFile": "Rejected materials were seen stored next to approved raw materials.",
+    // "title": "Audit found repeat errors; no CAPA",
+    "caseFile": "An internal audit found many mistakes: wrong use of modifier‑25, missing time for time‑based visits, and wrong drug units. The report was emailed, but no corrective plan was opened. Next month the same errors appeared again. Without owners and due dates, nothing changed. The problems keep repeating.",
     "violationOptions": [
-      "Material Segregation",
-      "Vendor Management",
-      "Pest Control",
-      "Audit Failure"
+      "No CAPA after audit findings; issues repeated ✅",
+      "CAPA created and closed",
+      "Errors dropped after training",
+      "Root causes well documented"
     ],
-    "correctViolation": "Material Segregation",
+    "correctViolation": "No CAPA after audit findings; issues repeated",
     "rootCauseOptions": [
-      "Lack of physical partition in warehouse",
-      "No bin labels",
-      "QA didn't verify",
-      "Late forklift movement"
+      "No owner/due dates; audit report not tied to actions; weak follow-up ✅",
+      "Printer squeaked",
+      "Parking lot full",
+      "Cafeteria closed"
     ],
-    "correctRootCause": "Lack of physical partition in warehouse",
+    "correctRootCause": "No owner/due dates; audit report not tied to actions; weak follow-up",
     "solutionOptions": [
-      "Color-code zones with visual boards",
-      "Create rejection cage",
-      "Install warning lights",
-      "Appoint bin-in-charge"
+      "Open a CAPA with owners/dates; track fixes (policy, training, edits); re‑audit to confirm drop ✅",
+      "Ignore audits if under 20% error",
+      "Run another audit without action",
+      "Delete the audit report"
     ],
-    "correctSolution": "Color-code zones with visual boards"
-  },
-  {
-    "id": 21,
-    "caseFile": "During a BMR review, it was noted that several entries were written in pencil and later erased and rewritten in blue ink. No cross-outs were visible.",
-    "violationOptions": [
-      "Equipment Qualification",
-      "Personnel Hygiene",
-      "Documentation Practices",
-      "Storage Conditions"
-    ],
-    "correctViolation": "Documentation Practices",
-    "rootCauseOptions": [
-      "Operator unaware of permanent ink usage policy",
-      "Expired ink pen",
-      "Training material not laminated",
-      "Delayed deviation closure"
-    ],
-    "correctRootCause": "Operator unaware of permanent ink usage policy",
-    "solutionOptions": [
-      "Introduce black pen SOP",
-      "Retrain all operators on GDP",
-      "Use invisible ink",
-      "Replace documentation team"
-    ],
-    "correctSolution": "Retrain all operators on GDP"
-  },
-  {
-    "id": 22,
-    "caseFile": "During a routine check, the storage area for finished products showed a temperature of 30\u00b0C for 8 hours, above the allowed 25\u00b0C. No alert was raised.",
-    "violationOptions": [
-      "Temperature Control",
-      "Water Testing",
-      "Vendor Qualification",
-      "Product Labeling"
-    ],
-    "correctViolation": "Temperature Control",
-    "rootCauseOptions": [
-      "Sensor battery failure",
-      "Fire alarm malfunction",
-      "Power outage in canteen",
-      "Staff didn't wear gloves"
-    ],
-    "correctRootCause": "Sensor battery failure",
-    "solutionOptions": [
-      "Freeze all batches",
-      "Add manual logbook",
-      "Install dual-alert sensor with auto-SMS",
-      "Change thermometer color"
-    ],
-    "correctSolution": "Install dual-alert sensor with auto-SMS"
-  },
-  {
-    "id": 23,
-    "caseFile": "Two APIs with similar names were kept adjacent in the dispensing area. A batch was found to contain the wrong API.",
-    "violationOptions": [
-      "Cross-contamination",
-      "Dispensing & Material Handling",
-      "Packaging Control",
-      "Vendor Audit"
-    ],
-    "correctViolation": "Dispensing & Material Handling",
-    "rootCauseOptions": [
-      "Look-alike packaging with poor labeling",
-      "Warehouse humidity",
-      "Wrong barcoding",
-      "No insect traps"
-    ],
-    "correctRootCause": "Look-alike packaging with poor labeling",
-    "solutionOptions": [
-      "Purchase new raw material",
-      "Change vendor",
-      "Physically separate and relabel materials",
-      "Rotate raw materials monthly"
-    ],
-    "correctSolution": "Physically separate and relabel materials"
-  },
-  {
-    "id": 24,
-    "caseFile": "CCTV footage revealed an operator entered a Grade B area wearing a lab coat instead of coveralls.",
-    "violationOptions": [
-      "Gowning SOP Violation",
-      "Pest Control",
-      "Label Control",
-      "Drainage Maintenance"
-    ],
-    "correctViolation": "Gowning SOP Violation",
-    "rootCauseOptions": [
-      "Lack of visual signage at entry point",
-      "Late lunch breaks",
-      "Footwear misplacement",
-      "Temperature fluctuations"
-    ],
-    "correctRootCause": "Lack of visual signage at entry point",
-    "solutionOptions": [
-      "Suspend the operator",
-      "Paste area-specific gowning visuals + retrain",
-      "Change gown vendor",
-      "Build new changing room"
-    ],
-    "correctSolution": "Paste area-specific gowning visuals + retrain"
-  },
-  {
-    "id": 25,
-    "caseFile": "An internal audit revealed that 15 SOPs had not been reviewed in the last 2 years. Last review dates were expired.",
-    "violationOptions": [
-      "Change Control",
-      "SOP Review & Documentation",
-      "Lab Equipment Validation",
-      "Line Clearance"
-    ],
-    "correctViolation": "SOP Review & Documentation",
-    "rootCauseOptions": [
-      "No SOP tracking calendar",
-      "Printer was slow",
-      "SOPs were hard to understand",
-      "SOP font was too small"
-    ],
-    "correctRootCause": "No SOP tracking calendar",
-    "solutionOptions": [
-      "Archive old SOPs",
-      "Digital SOP tracker with auto-alerts",
-      "Create SOPs in Hindi",
-      "Hire SOP manager"
-    ],
-    "correctSolution": "Digital SOP tracker with auto-alerts"
-  },
-  {
-    "id": 26,
-    "caseFile": "Microbial count in purified water exceeded limits in 3 batches. Investigation revealed irregular sanitization.",
-    "violationOptions": [
-      "Water System Monitoring",
-      "Vendor Qualification",
-      "Stability Testing",
-      "Microbial Testing Kit"
-    ],
-    "correctViolation": "Water System Monitoring",
-    "rootCauseOptions": [
-      "Sanitization not scheduled weekly",
-      "RO system overloaded",
-      "Filter had algae",
-      "No gloves worn during testing"
-    ],
-    "correctRootCause": "Sanitization not scheduled weekly",
-    "solutionOptions": [
-      "Conduct final rinse",
-      "Lock access to tanks",
-      "Schedule auto-sanitization every 7 days",
-      "Use UV stickers"
-    ],
-    "correctSolution": "Schedule auto-sanitization every 7 days"
-  },
-  {
-    "id": 27,
-    "caseFile": "A batch was shipped with old artwork \u2014 the new regulatory update was missed on the label.",
-    "violationOptions": [
-      "Artwork Management",
-      "Visual Inspection",
-      "Expiry Date Validation",
-      "Calibration"
-    ],
-    "correctViolation": "Artwork Management",
-    "rootCauseOptions": [
-      "Artwork change not updated in master copy",
-      "HR didn\u2019t inform warehouse",
-      "Stock was too high",
-      "New label font unreadable"
-    ],
-    "correctRootCause": "Artwork change not updated in master copy",
-    "solutionOptions": [
-      "Lock the print room",
-      "Link artwork tracker to change control system",
-      "Color-code label reels",
-      "Use QR stickers"
-    ],
-    "correctSolution": "Link artwork tracker to change control system"
-  },
-  {
-    "id": 28,
-    "caseFile": "Same deviation recurred 4 times in 2 months. CAPA was marked as 'closed' each time.",
-    "violationOptions": [
-      "Ineffective CAPA Management",
-      "SOP Duplication",
-      "Internal Audit",
-      "Product Sampling"
-    ],
-    "correctViolation": "Ineffective CAPA Management",
-    "rootCauseOptions": [
-      "CAPA just copied from previous incident",
-      "Operator changed",
-      "Vendor delayed raw material",
-      "SOP was misplaced"
-    ],
-    "correctRootCause": "CAPA just copied from previous incident",
-    "solutionOptions": [
-      "Force RCA to change every time",
-      "Review CAPA effectiveness after 15 days",
-      "Track via WhatsApp",
-      "Add graphics to CAPA forms"
-    ],
-    "correctSolution": "Review CAPA effectiveness after 15 days"
-  },
-  {
-    "id": 29,
-    "caseFile": "An operator performed equipment cleaning without undergoing training for the new model.",
-    "violationOptions": [
-      "Personnel Training",
-      "Area Qualification",
-      "Equipment Hold Time",
-      "Raw Material Sampling"
-    ],
-    "correctViolation": "Personnel Training",
-    "rootCauseOptions": [
-      "Training matrix not updated",
-      "Forgot password",
-      "Overlapping shift",
-      "Toolbox missing"
-    ],
-    "correctRootCause": "Training matrix not updated",
-    "solutionOptions": [
-      "Suspend operator",
-      "Link training to equipment ID",
-      "Move training to HR",
-      "Create stickers on machines"
-    ],
-    "correctSolution": "Link training to equipment ID"
-  },
-  {
-    "id": 30,
-    "caseFile": "Two different product batches were processed in the same mix tank with insufficient cleaning time between.",
-    "violationOptions": [
-      "Cleaning Validation",
-      "Glassware SOP",
-      "Shift Handover",
-      "Gowning Room Entry"
-    ],
-    "correctViolation": "Cleaning Validation",
-    "rootCauseOptions": [
-      "Cleaning cycle time reduced to meet dispatch",
-      "Foam detergent used",
-      "Wrong pH",
-      "Label fell off"
-    ],
-    "correctRootCause": "Cleaning cycle time reduced to meet dispatch",
-    "solutionOptions": [
-      "Introduce digital cleaning logs with checklists",
-      "Color the tank lid",
-      "Label with emojis",
-      "Reduce cleaning steps"
-    ],
-    "correctSolution": "Introduce digital cleaning logs with checklists"
+    "correctSolution": "Open a CAPA with owners/dates; track fixes (policy, training, edits); reâ€‘audit to confirm drop"
   }
 ];

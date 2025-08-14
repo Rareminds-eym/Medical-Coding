@@ -1,14 +1,16 @@
-import { supabase } from "../lib/supabase";
-import React, { useState, useEffect } from "react";
-import { Factory, Clock, Trophy, AlertTriangle, Eye } from "lucide-react";
+import { AlertTriangle, Clock, Eye, Factory, Play, Trophy } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useDeviceLayout } from "../hooks/useOrientation";
-import { hackathonData } from "./HackathonData";
+import { supabase } from "../lib/supabase";
 import type { Question } from "./HackathonData";
+import { hackathonData } from "./HackathonData";
 // @ts-ignore
-import { QuestionCard } from "./QuestionCard";
-import { Timer } from "./Timer";
-import { Results } from "./Results";
 import { ModuleCompleteModal } from "./ModuleCompleteModal";
+import { QuestionCard } from "./QuestionCard";
+import { Results } from "./Results";
+import { Timer } from "./Timer";
+
+
 
 export interface GameState {
   currentLevel: 1 | 2;
@@ -43,12 +45,48 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
   // Case brief modal state
   const [showCaseBrief, setShowCaseBrief] = useState(false);
 
+  // Utility function to ensure valid session before API calls
+  const ensureValidSession = async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error || !session) {
+        // Try to refresh the session
+        const { error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) {
+          throw new Error("Session expired. Please log in again.");
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Session validation failed:", err);
+      setTeamInfoError("Session expired. Please log in again.");
+      return false;
+    }
+  };
+  
+  // Walkthrough video handler
+  const showWalkthroughVideo = () => {
+    // You can replace this URL with the actual walkthrough video URL
+    const videoUrl = "https://www.youtube.com/watch?v=your-walkthrough-video-id";
+    window.open(videoUrl, '_blank');
+  };
+
   // Save team attempt to backend
   const saveTeamAttempt = async (module_number: number) => {
     if (!session_id) {
       console.warn("No session_id available for team attempt.");
       return;
     }
+
+    // Ensure valid session before saving
+    const sessionValid = await ensureValidSession();
+    if (!sessionValid) {
+      console.error("Cannot save team attempt: Invalid session");
+      return;
+    }
+
     // Fetch all individual attempts for this session and module
     const { data: attempts, error } = await supabase
       .from("individual_attempts")
@@ -61,21 +99,31 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
         error.message,
         error.details
       );
+      if (error.message.includes("JWT") || error.message.includes("expired")) {
+        setTeamInfoError("Session expired while loading team data. Please log in again.");
+      }
       return;
     }
     if (!attempts || attempts.length === 0) {
       console.warn("No individual attempts found for team.");
       return;
     }
-    // Calculate weighted average score and average time
-    const totalScore = attempts.reduce((sum, a) => sum + (a.score || 0), 0);
-    const weightedAvgScore = (totalScore / attempts.length).toFixed(2);
+    // Calculate average score, top scorer, and average time
+    const scores = attempts.map(a => a.score || 0);
+    const totalScore = scores.reduce((sum, s) => sum + s, 0);
+    const avgScore = scores.length > 0 ? totalScore / scores.length : 0;
+    const topScore = scores.length > 0 ? Math.max(...scores) : 0;
+    const weightedAvgScore = (0.7 * avgScore + 0.3 * topScore).toFixed(2);
     const avgTimeSec = Math.round(
       attempts.reduce((sum, a) => sum + (a.completion_time_sec || 0), 0) /
         attempts.length
     );
+    // Debug logs
+    console.log("[TEAM SCORING] Individual scores:", scores);
+    console.log(`[TEAM SCORING] Avg score: ${avgScore}, Top score: ${topScore}, Weighted team score: ${weightedAvgScore}`);
+    console.log(`[TEAM SCORING] Avg time (sec): ${avgTimeSec}`);
     // Insert into team_attempts
-    const { error: insertError, data: teamData } = await supabase
+    const { error: insertError } = await supabase
       .from("team_attempts")
       .insert([
         {
@@ -92,8 +140,9 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
         insertError.message,
         insertError.details
       );
-    } else {
-      console.log("Saved team attempt:", teamData);
+      if (insertError.message.includes("JWT") || insertError.message.includes("expired")) {
+        setTeamInfoError("Session expired while saving team data. Please log in again.");
+      }
     }
   };
   // Error state for loading team info
@@ -102,64 +151,375 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
   // mode === 'violation-root-cause' => Level 1 (HL1)
   // mode === 'solution' => Level 2 (HL2)
   const initialLevel = mode === "solution" ? 2 : 1;
-  const [gameState, setGameState] = useState<GameState>({
-    currentLevel: initialLevel,
-    currentQuestion: 0,
-    questions: [],
-    answers: [],
-    score: 0,
-    timeRemaining: 5400, // 1.5 hours in seconds
-    gameStarted: false,
-    gameCompleted: false,
-    showLevelModal: false,
-    level1CompletionTime: 0,
+
+  const [gameState, setGameState] = useState<GameState>(() => {
+    const initialState: GameState = {
+      currentLevel: initialLevel as 1 | 2,
+      currentQuestion: 0,
+      questions: [],
+      answers: [],
+      score: 0,
+      timeRemaining: 5400, // 1.5 hours in seconds
+      gameStarted: false,
+      gameCompleted: false,
+      showLevelModal: false,
+      level1CompletionTime: 0,
+    };
+
+    return initialState;
   });
   // Team unlock state
   const [canAccessModule6, setCanAccessModule6] = useState(false);
   // Session/user info (fetch from teams table for current user)
   const [session_id, setSessionId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
-  // Block UI until session_id and email are loaded
-  const loadingIds = !session_id || !email;
 
-  // Example: get current user's id from auth (replace with your auth logic)
+  // Progress loading state
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const [hasSavedProgress, setHasSavedProgress] = useState(false);
+  const [savedProgressInfo, setSavedProgressInfo] = useState<{
+    currentQuestion: number;
+    totalQuestions: number;
+    answeredQuestions: number;
+    timeRemaining: number;
+  } | null>(null);
+
+  // Block UI until session_id, email are loaded and progress is checked
+  const loadingIds = !session_id || !email || isLoadingProgress;
+
+  // Periodic timer save interval
+  const [timerSaveInterval, setTimerSaveInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Timer save status indicator
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false);
+
+  // Refs to access current values in intervals without causing re-renders
+  const gameStateRef = useRef(gameState);
+  const sessionIdRef = useRef(session_id);
+  const emailRef = useRef(email);
+
+  // Update refs when values change
+  useEffect(() => {
+    gameStateRef.current = gameState;
+    sessionIdRef.current = session_id;
+    emailRef.current = email;
+
+
+  }, [gameState, session_id, email]);
+
+  // Enhanced auth handling with JWT refresh
   useEffect(() => {
     const fetchTeamInfo = async () => {
-      // Get current user's email from Supabase Auth
-      const {
-        data: { session },
-        error: authError,
-      } = await supabase.auth.getSession();
-      if (authError || !session || !session.user || !session.user.email) {
-        setTeamInfoError("User email not found. Please log in.");
-        return;
-      }
-      const userEmail = session.user.email;
-      // Fetch session_id from teams table using email - use maybeSingle() instead of single()
-      // to handle cases where there might be 0 or multiple rows
-      const { data, error } = await supabase
-        .from("teams")
-        .select("session_id")
-        .eq("email", userEmail);
-      
-      if (error) {
-        setTeamInfoError(
-          "Database error: " + (error.message || "Unknown error.")
-        );
-      } else if (!data || data.length === 0) {
-        // For hackathon modules, we'll create a default session ID if none exists
-        console.log("No team found, using default session for hackathon");
-        const defaultSessionId = `hackathon_${userEmail.split('@')[0]}_${Date.now()}`;
-        setSessionId(defaultSessionId);
-        setEmail(userEmail);
-      } else {
-        // Use the first team found
-        setSessionId(data[0].session_id);
-        setEmail(userEmail);
+      try {
+        // First, try to refresh the session if it's expired
+        const { error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError) {
+          console.warn("Session refresh failed:", refreshError.message);
+        }
+
+        // Get current user's email from Supabase Auth
+        const {
+          data: { session },
+          error: authError,
+        } = await supabase.auth.getSession();
+
+        if (authError) {
+          console.error("Auth error:", authError);
+          if (authError.message.includes("JWT") || authError.message.includes("expired")) {
+            setTeamInfoError("Session expired. Please log in again.");
+          } else {
+            setTeamInfoError("Authentication error. Please log in.");
+          }
+          return;
+        }
+
+        if (!session || !session.user || !session.user.email) {
+          setTeamInfoError("User session not found. Please log in.");
+          return;
+        }
+
+        const userEmail = session.user.email;
+
+        // Fetch session_id from teams table using email
+        const { data, error } = await supabase
+          .from("teams")
+          .select("session_id")
+          .eq("email", userEmail)
+          .single();
+
+        if (error) {
+          console.error("Database error:", error);
+          if (error.message.includes("JWT") || error.message.includes("expired")) {
+            setTeamInfoError("Session expired. Please log in again.");
+          } else {
+            setTeamInfoError("Could not load team info. " + (error.message || "Unknown error."));
+          }
+        } else if (!data) {
+          setTeamInfoError("No team info found for this user.");
+        } else {
+          setSessionId(data.session_id);
+          setEmail(userEmail);
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setTeamInfoError("An unexpected error occurred. Please try again.");
       }
     };
+
     fetchTeamInfo();
   }, []);
+
+  // Load saved progress when session_id and email are available
+  useEffect(() => {
+    const loadSavedProgress = async () => {
+      if (!session_id || !email || progressLoaded) return;
+
+      setIsLoadingProgress(true);
+      try {
+        // Determine module number based on current level/mode
+        const moduleNumber = initialLevel === 1 ? 5 : 6;
+
+        // Load saved attempt details
+        const { data: attemptDetails, error } = await supabase
+          .from("attempt_details")
+          .select("*")
+          .eq("email", email)
+          .eq("session_id", session_id)
+          .eq("module_number", moduleNumber)
+          .order("question_index", { ascending: true });
+
+        if (error) {
+          console.error("Error loading saved progress:", error);
+          setProgressLoaded(true);
+          return;
+        }
+
+        if (attemptDetails && attemptDetails.length > 0) {
+          setHasSavedProgress(true);
+
+          console.log("Loading saved progress:", {
+            attemptDetailsLength: attemptDetails.length,
+            moduleNumber,
+            initialLevel,
+            attemptDetails: attemptDetails.map(d => ({
+              question_index: d.question_index,
+              hasQuestion: !!d.question,
+              hasAnswer: !!d.answer
+            }))
+          });
+
+          // Always restore game state if there are saved attempt details,
+          // even if no answers have been provided yet
+          // This fixes the "No saved questions found" error when user starts game but doesn't answer anything
+          if (attemptDetails.length > 0) {
+            // The saved data might not have all 5 questions if user didn't reach them all
+            // We need to reconstruct the full game state properly
+
+            // First, get the questions that were saved
+            const savedQuestionData = attemptDetails.map(detail => ({
+              index: detail.question_index,
+              question: detail.question,
+              answer: detail.answer
+            })).sort((a, b) => a.index - b.index);
+
+            console.log("Saved question data:", savedQuestionData);
+
+            // If we don't have a complete set, we need to generate the missing questions
+            // This happens when user didn't reach all questions before saving
+            if (savedQuestionData.length < 5) {
+              console.log("Incomplete saved data, generating missing questions...");
+
+              // Generate a fresh set of 5 questions
+              const allQuestions = selectRandomQuestions();
+              const allAnswers = allQuestions.map(() => ({
+                violation: "",
+                rootCause: "",
+                solution: "",
+              }));
+
+              // Restore the saved questions and answers in their correct positions
+              savedQuestionData.forEach(({ index, question, answer }) => {
+                if (index < 5 && question) {
+                  allQuestions[index] = question;
+                  allAnswers[index] = answer || { violation: "", rootCause: "", solution: "" };
+                }
+              });
+
+              // Use the reconstructed arrays
+              var finalQuestions = allQuestions;
+              var finalAnswers = allAnswers;
+            } else {
+              console.log("Complete saved data found, using saved questions...");
+              // We have all 5 questions saved
+              var finalQuestions = savedQuestionData.map(item => item.question).filter(q => q) as Question[];
+              var finalAnswers = savedQuestionData.map(item => item.answer || { violation: "", rootCause: "", solution: "" }) as { violation: string; rootCause: string; solution: string; }[];
+
+              // Ensure we still have 5 questions even if some were null
+              if (finalQuestions.length < 5) {
+                console.warn("Some saved questions were null, filling with random questions...");
+                const additionalQuestions = selectRandomQuestions();
+                while (finalQuestions.length < 5) {
+                  finalQuestions.push(additionalQuestions[finalQuestions.length]);
+                  finalAnswers.push({ violation: "", rootCause: "", solution: "" });
+                }
+              }
+            }
+
+            console.log("Final questions and answers:", {
+              questionsLength: finalQuestions.length,
+              answersLength: finalAnswers.length,
+              questions: finalQuestions.map(q => q?.id || 'null')
+            });
+
+            // Find the furthest question the user has navigated to
+            // This represents where they should continue from (after clicking Proceed)
+            let currentQuestionIndex = 0;
+            let furthestQuestionIndex = -1;
+            let completeCount = 0;
+            let savedTimeRemaining = 5400; // Default timer value
+
+            // The furthest question is the highest question_index in the saved data
+            // This represents the last question the user navigated to (via Proceed button)
+            attemptDetails.forEach(detail => {
+              if (detail.question_index > furthestQuestionIndex) {
+                furthestQuestionIndex = detail.question_index;
+                // Get the timer state from the furthest question reached
+                if (detail.time_remaining && typeof detail.time_remaining === 'number' && !isNaN(detail.time_remaining)) {
+                  savedTimeRemaining = Math.max(0, Math.min(detail.time_remaining, 5400)); // Ensure valid range
+                }
+              }
+            });
+
+            // Validate savedTimeRemaining before using it
+            if (isNaN(savedTimeRemaining) || savedTimeRemaining < 0 || savedTimeRemaining > 5400) {
+              savedTimeRemaining = 5400;
+            }
+
+            // Count complete answers for progress display
+            for (let i = 0; i < finalAnswers.length; i++) {
+              const answer = finalAnswers[i];
+              if (answer) {
+                let isComplete = false;
+                if (initialLevel === 1) {
+                  isComplete = !!(answer.violation && answer.violation.trim() !== "" &&
+                             answer.rootCause && answer.rootCause.trim() !== "");
+                } else {
+                  isComplete = !!(answer.solution && answer.solution.trim() !== "");
+                }
+                if (isComplete) completeCount++;
+              }
+            }
+
+            // Continue from the furthest question the user reached
+            if (furthestQuestionIndex >= 0) {
+              currentQuestionIndex = furthestQuestionIndex;
+            } else {
+              currentQuestionIndex = 0;
+            }
+
+            // Set progress info
+            setSavedProgressInfo({
+              currentQuestion: currentQuestionIndex + 1,
+              totalQuestions: finalQuestions.length,
+              answeredQuestions: completeCount,
+              timeRemaining: savedTimeRemaining,
+            });
+
+            // Ensure currentQuestion is within valid bounds
+            currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, finalQuestions.length - 1));
+
+            // Final validation of savedTimeRemaining before setting state
+            const finalTimeRemaining = (isNaN(savedTimeRemaining) || savedTimeRemaining < 0 || savedTimeRemaining > 5400) ? 5400 : savedTimeRemaining;
+
+            // Check if all cases are completed during restoration
+            const allCasesCompleted = completeCount >= finalQuestions.length;
+
+            if (allCasesCompleted) {
+              // All cases completed - show level complete modal immediately
+              if (initialLevel === 1) {
+                const level1Time = Math.max(0, 5400 - finalTimeRemaining);
+                // Save attempt to backend
+                saveIndividualAttempt(
+                  calculateScore(finalAnswers, finalQuestions),
+                  level1Time,
+                  5
+                );
+                saveTeamAttempt(5); // Save team summary for module 5
+
+                // Restore game state with level modal shown
+                setGameState(prev => ({
+                  ...prev,
+                  questions: finalQuestions,
+                  answers: finalAnswers,
+                  currentQuestion: finalQuestions.length - 1, // Set to last question
+                  gameStarted: false,
+                  currentLevel: initialLevel,
+                  timeRemaining: finalTimeRemaining,
+                  showLevelModal: true,
+                  level1CompletionTime: level1Time,
+                }));
+              } else {
+                // Level 2 completed - finish game
+                const finalScore = calculateScore(finalAnswers, finalQuestions);
+                const finalTime = Math.max(0, 5400 - finalTimeRemaining);
+                saveIndividualAttempt(finalScore, finalTime, 6);
+                saveTeamAttempt(6); // Save team summary for module 6
+
+                // Restore game state as completed
+                setGameState(prev => ({
+                  ...prev,
+                  questions: finalQuestions,
+                  answers: finalAnswers,
+                  currentQuestion: finalQuestions.length - 1, // Set to last question
+                  gameStarted: false,
+                  currentLevel: initialLevel,
+                  timeRemaining: finalTimeRemaining,
+                  gameCompleted: true,
+                  score: finalScore,
+                }));
+              }
+            } else {
+              // Not all cases completed - restore normal game state
+              console.log("Restoring normal game state:", {
+                questionsLength: finalQuestions.length,
+                answersLength: finalAnswers.length,
+                currentQuestionIndex,
+                finalTimeRemaining
+              });
+
+              setGameState(prev => ({
+                ...prev,
+                questions: finalQuestions,
+                answers: finalAnswers,
+                currentQuestion: currentQuestionIndex,
+                gameStarted: false, // Let user choose to continue
+                currentLevel: initialLevel,
+                timeRemaining: finalTimeRemaining, // Restore timer state with validation
+              }));
+            }
+
+
+          }
+        } else {
+          console.log("No saved attempt details found");
+          setHasSavedProgress(false);
+        }
+
+        setProgressLoaded(true);
+      } catch (err) {
+        console.error("Error loading progress:", err);
+        // Even if loading fails, if we detected saved progress, keep that flag
+        // The continue game function will handle generating questions if needed
+        setProgressLoaded(true);
+      } finally {
+        setIsLoadingProgress(false);
+      }
+    };
+
+    loadSavedProgress();
+  }, [session_id, email, initialLevel, progressLoaded]);
 
   // Poll for module 6 unlock after Module 5
   useEffect(() => {
@@ -183,13 +543,103 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     return () => pollInterval && clearInterval(pollInterval);
   }, [gameState.gameCompleted, gameState.currentLevel, session_id]);
 
+  // Cleanup timer save interval on component unmount
+  useEffect(() => {
+    return () => {
+      if (timerSaveInterval) {
+        clearInterval(timerSaveInterval);
+      }
+    };
+  }, []);
+
+  // Auto-show case brief for Level 1 in mobile horizontal mode when game starts
+  useEffect(() => {
+    if (gameState.gameStarted && gameState.currentLevel === 1 && isMobileHorizontal) {
+      setTimeout(() => setShowCaseBrief(true), 100);
+    }
+  }, [gameState.gameStarted, gameState.currentLevel, isMobileHorizontal]);
+
+  // Periodic timer save - save timer every 30 seconds during active gameplay
+  useEffect(() => {
+    if (!gameState.gameStarted || gameState.gameCompleted || gameState.showLevelModal || !session_id || !email) {
+      // Clear any existing interval if game is not active or level modal is shown
+      if (timerSaveInterval) {
+        clearInterval(timerSaveInterval);
+        setTimerSaveInterval(null);
+      }
+      return;
+    }
+
+    // Only create interval if one doesn't exist
+    if (!timerSaveInterval) {
+      const interval = setInterval(async () => {
+        try {
+          const currentState = gameStateRef.current;
+          const currentSession = sessionIdRef.current;
+          const currentEmailValue = emailRef.current;
+
+          // Skip if game is no longer active or level modal is shown
+          if (!currentState.gameStarted || currentState.gameCompleted || currentState.showLevelModal || !currentSession || !currentEmailValue) {
+            return;
+          }
+
+          // Only save if we have meaningful progress (timer has been running for at least 10 seconds)
+          if (currentState.timeRemaining < 5390) { // 5400 - 10 seconds
+            // Ensure valid session before saving
+            const sessionValid = await ensureValidSession();
+            if (!sessionValid) {
+              return;
+            }
+
+            await supabase.from("attempt_details").upsert(
+              [
+                {
+                  email: currentEmailValue,
+                  session_id: currentSession,
+                  module_number: currentState.currentLevel === 1 ? 5 : 6,
+                  question_index: currentState.currentQuestion,
+                  question: currentState.questions[currentState.currentQuestion] || null,
+                  answer: currentState.answers[currentState.currentQuestion] || { violation: "", rootCause: "", solution: "" },
+                  time_remaining: currentState.timeRemaining,
+                },
+              ],
+              { onConflict: "email,session_id,module_number,question_index" }
+            );
+
+            // Update save indicator
+            setShowSaveIndicator(true);
+
+            // Hide save indicator after 2 seconds
+            setTimeout(() => {
+              setShowSaveIndicator(false);
+            }, 2000);
+          }
+        } catch (err) {
+          console.error('Periodic timer save error:', err);
+          if (err instanceof Error && (err.message.includes("JWT") || err.message.includes("expired"))) {
+            console.warn("Session expired during periodic timer save");
+          }
+        }
+      }, 30000); // Fixed 30-second interval
+
+      setTimerSaveInterval(interval);
+    }
+  }, [gameState.gameStarted, gameState.gameCompleted, gameState.showLevelModal, session_id, email, timerSaveInterval]);
+
   // Save individual attempt to backend
   const saveIndividualAttempt = async (
     score: number,
     completion_time_sec: number,
     module_number: number
   ) => {
-    const { error, data } = await supabase.from("individual_attempts").insert([
+    // Ensure valid session before saving
+    const sessionValid = await ensureValidSession();
+    if (!sessionValid) {
+      console.error("Cannot save attempt: Invalid session");
+      return;
+    }
+
+    const { error } = await supabase.from("individual_attempts").insert([
       {
         email: email,
         session_id: session_id,
@@ -200,9 +650,30 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     ]);
     if (error) {
       console.error("Supabase insert error:", error.message, error.details);
-      alert("Error saving attempt: " + error.message);
-    } else {
-      console.log("Saved attempt:", data);
+      if (error.message.includes("JWT") || error.message.includes("expired")) {
+        setTeamInfoError("Session expired while saving. Please log in again.");
+      } else {
+        alert("Error saving attempt: " + error.message);
+      }
+    }
+  };
+
+  // Clear saved progress for a fresh start
+  const clearSavedProgress = async () => {
+    if (!session_id || !email) return;
+
+    try {
+      const moduleNumber = initialLevel === 1 ? 5 : 6;
+      await supabase
+        .from("attempt_details")
+        .delete()
+        .eq("email", email)
+        .eq("session_id", session_id)
+        .eq("module_number", moduleNumber);
+
+
+    } catch (err) {
+      console.error("Error clearing saved progress:", err);
     }
   };
 
@@ -212,7 +683,10 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     return shuffled.slice(0, 5);
   };
 
-  const startGame = () => {
+  const startGame = async () => {
+    // Clear any existing saved progress for a fresh start
+    await clearSavedProgress();
+
     const questions = selectRandomQuestions();
     const initialAnswers = questions.map(() => ({
       violation: "",
@@ -227,7 +701,90 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
       gameStarted: true,
       // Ensure correct level is set on start
       currentLevel: initialLevel,
+      // Reset timer to full time for new game
+      timeRemaining: 5400,
     }));
+
+    // Save initial position (question 0) when starting new game
+    setTimeout(() => {
+      saveCurrentPosition(0);
+    }, 100);
+
+    // Reset progress flags
+    setProgressLoaded(false);
+    setHasSavedProgress(false);
+    setSavedProgressInfo(null);
+  };
+
+  const continueGame = () => {
+    // Game state should already be restored from saved progress
+    // Just ensure the game is marked as started
+    setGameState(prev => {
+      // Debug logging to understand the issue
+      console.log("Continue Game Debug:", {
+        questionsLength: prev.questions.length,
+        answersLength: prev.answers.length,
+        currentQuestion: prev.currentQuestion,
+        hasSavedProgress,
+        progressLoaded,
+        gameStarted: prev.gameStarted
+      });
+
+      // Validate game state before continuing
+      if (prev.questions.length === 0) {
+        console.error("No questions found in game state. Attempting to restore from saved progress...");
+
+        // If we have saved progress but questions weren't loaded, try to generate them
+        if (hasSavedProgress) {
+          console.log("Attempting to generate questions for continue game...");
+          const questions = selectRandomQuestions();
+          const initialAnswers = questions.map(() => ({
+            violation: "",
+            rootCause: "",
+            solution: "",
+          }));
+
+          return {
+            ...prev,
+            questions,
+            answers: initialAnswers,
+            gameStarted: true,
+          };
+        }
+
+        alert("Error: No saved questions found. Please start a new game.");
+        return prev;
+      }
+
+      if (prev.currentQuestion >= prev.questions.length) {
+        alert("Error: Invalid saved progress. Please start a new game.");
+        return prev;
+      }
+
+      if (prev.answers.length !== prev.questions.length) {
+        console.warn("Answers length mismatch. Fixing...");
+        // Fix the answers array to match questions length
+        const fixedAnswers = [...prev.answers];
+        while (fixedAnswers.length < prev.questions.length) {
+          fixedAnswers.push({
+            violation: "",
+            rootCause: "",
+            solution: "",
+          });
+        }
+
+        return {
+          ...prev,
+          answers: fixedAnswers,
+          gameStarted: true,
+        };
+      }
+
+      return {
+        ...prev,
+        gameStarted: true,
+      };
+    });
   };
 
   const handleAnswer = (answer: {
@@ -250,6 +807,13 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
       // Auto-save answers and questions to database after every answer
       const saveAttemptDetails = async () => {
         try {
+          // Ensure valid session before auto-saving
+          const sessionValid = await ensureValidSession();
+          if (!sessionValid) {
+            console.warn("Cannot auto-save: Invalid session");
+            return;
+          }
+
           await supabase.from("attempt_details").upsert(
             [
               {
@@ -259,12 +823,21 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
                 question_index: prev.currentQuestion,
                 question: prev.questions[prev.currentQuestion],
                 answer: newAnswers[prev.currentQuestion],
+                time_remaining: prev.timeRemaining, // Save current timer state
               },
             ],
             { onConflict: "email,session_id,module_number,question_index" }
           );
+
+          // Update save indicator
+          setShowSaveIndicator(true);
+          setTimeout(() => setShowSaveIndicator(false), 2000);
         } catch (err) {
           console.error("Auto-save error:", err);
+          if (err instanceof Error && (err.message.includes("JWT") || err.message.includes("expired"))) {
+            console.warn("Session expired during auto-save");
+            // Don't show error to user for auto-save failures, just log it
+          }
         }
       };
       saveAttemptDetails();
@@ -276,9 +849,46 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     });
   };
 
+  // Save current position to database
+  const saveCurrentPosition = async (questionIndex: number) => {
+    if (!session_id || !email) return;
+
+    try {
+      const sessionValid = await ensureValidSession();
+      if (!sessionValid) return;
+
+      await supabase.from("attempt_details").upsert(
+        [
+          {
+            email: email,
+            session_id: session_id,
+            module_number: initialLevel === 1 ? 5 : 6,
+            question_index: questionIndex,
+            question: gameState.questions[questionIndex] || null,
+            answer: gameState.answers[questionIndex] || { violation: "", rootCause: "", solution: "" },
+            time_remaining: gameState.timeRemaining, // Save current timer state
+          },
+        ],
+        { onConflict: "email,session_id,module_number,question_index" }
+      );
+
+      // Update save indicator
+      setShowSaveIndicator(true);
+      setTimeout(() => setShowSaveIndicator(false), 2000);
+    } catch (err) {
+      console.error("Error saving position:", err);
+    }
+  };
+
   const nextQuestion = () => {
     setGameState((prev) => {
       const nextQuestionIndex = prev.currentQuestion + 1;
+
+      // Save the new position when user proceeds
+      if (nextQuestionIndex < 5) {
+        saveCurrentPosition(nextQuestionIndex);
+      }
+
       if (nextQuestionIndex >= 5) {
         if (prev.currentLevel === 1) {
           // Level 1 completed - show modal
@@ -309,19 +919,32 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
           };
         }
       } else {
-        // Always initialize the next answer object to clear drag-and-drop
+        // Move to next question and ensure answer object exists
         const newAnswers = [...prev.answers];
+
+        // Ensure the next question has an answer object initialized
         if (!newAnswers[nextQuestionIndex]) {
           newAnswers[nextQuestionIndex] = {
             violation: "",
             rootCause: "",
             solution: "",
           };
-        } else {
-          newAnswers[nextQuestionIndex].violation = "";
-          newAnswers[nextQuestionIndex].rootCause = "";
-          newAnswers[nextQuestionIndex].solution = "";
         }
+
+        // Only clear the next question's answers if we're in normal gameplay
+        // (not when restoring from saved progress)
+        if (!progressLoaded || nextQuestionIndex > prev.currentQuestion) {
+          // Clear only the fields relevant to the current level
+          if (prev.currentLevel === 1) {
+            newAnswers[nextQuestionIndex].violation = "";
+            newAnswers[nextQuestionIndex].rootCause = "";
+          } else {
+            newAnswers[nextQuestionIndex].solution = "";
+          }
+        }
+
+
+
         return {
           ...prev,
           currentQuestion: nextQuestionIndex,
@@ -362,24 +985,41 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     return score;
   };
 
-  const handleTimeUp = () => {
-    const finalScore = calculateScore(gameState.answers, gameState.questions);
+  const handleTimeUp = useCallback(() => {
+    const currentGameState = gameStateRef.current;
+    const finalScore = calculateScore(currentGameState.answers, currentGameState.questions);
     setGameState((prev) => ({
       ...prev,
       gameCompleted: true,
       score: finalScore,
       timeRemaining: 0,
     }));
-  };
+  }, []); // Empty dependency array - use ref for current values
+
+  const handleSetTimeRemaining = useCallback((timeOrUpdater: number | ((prev: number) => number)) => {
+    if (typeof timeOrUpdater === 'function') {
+      // Handle functional update
+      setGameState((prev) => {
+        const newTime = timeOrUpdater(prev.timeRemaining);
+        // Validate the result
+        if (isNaN(newTime) || newTime < 0) {
+          return prev;
+        }
+        const validTime = Math.max(0, Math.min(newTime, 5400));
+        return { ...prev, timeRemaining: validTime };
+      });
+    } else {
+      // Handle direct value
+      if (isNaN(timeOrUpdater) || timeOrUpdater < 0) {
+        return;
+      }
+      const validTime = Math.max(0, Math.min(timeOrUpdater, 5400));
+      setGameState((prev) => ({ ...prev, timeRemaining: validTime }));
+    }
+  }, []);
 
   // Reset game state when mode changes (e.g., after navigation to HL2)
   React.useEffect(() => {
-    console.log(
-      "[HL2 Debug] mode:",
-      mode,
-      "currentLevel:",
-      gameState.currentLevel
-    );
     if (mode === "solution") {
       // Preserve Level 1 answers for summary in Level 2
       setGameState((prev) => {
@@ -422,30 +1062,67 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
   if (!gameState.gameStarted) {
     if (loadingIds || teamInfoError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-teal-900">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">
-              Loading Team Info...
+        <div className="min-h-screen flex items-center justify-center bg-gray-800 relative p-2">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+          <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+          
+          <div className="pixel-border bg-gradient-to-r from-cyan-600 to-blue-600 p-4 max-w-md w-full text-center relative z-10">
+            <h2 className="text-lg font-black mb-3 text-cyan-100 pixel-text">
+              LOADING TEAM INFO...
             </h2>
             {teamInfoError ? (
               <>
-                <p className="text-red-600 mb-6">{teamInfoError}</p>
-                <button
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg"
-                  onClick={() => {
-                    setTeamInfoError(null);
-                    window.location.reload();
-                  }}
-                >
-                  Retry
-                </button>
+                <p className="text-red-300 mb-4 font-bold text-sm">{teamInfoError}</p>
+                <div className="flex flex-col gap-2">
+                  {teamInfoError.includes("expired") || teamInfoError.includes("JWT") ? (
+                    <>
+                      <button
+                        className="pixel-border bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black py-2 px-4 pixel-text transition-all text-sm"
+                        onClick={() => {
+                          // Redirect to login page
+                          window.location.href = '/login'; // Adjust this path as needed
+                        }}
+                      >
+                        GO TO LOGIN
+                      </button>
+                      <button
+                        className="pixel-border bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-black py-1 px-3 pixel-text transition-all text-sm"
+                        onClick={async () => {
+                          setTeamInfoError(null);
+                          // Try to sign out and clear any cached tokens
+                          try {
+                            await supabase.auth.signOut();
+                          } catch (err) {
+                            console.warn("Sign out error:", err);
+                          }
+                          window.location.reload();
+                        }}
+                      >
+                        RETRY
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="pixel-border bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-black py-1 px-3 pixel-text transition-all text-sm"
+                      onClick={() => {
+                        setTeamInfoError(null);
+                        window.location.reload();
+                      }}
+                    >
+                      RETRY
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               <>
-                <p className="text-gray-600 mb-6 lg:mb-8 text-sm lg:text-base">
-                  Please wait while we load your team session.
+                <p className="text-cyan-100 mb-4 text-sm font-bold">
+                  Please wait while we load your team session and check for saved progress.
                 </p>
-                <div className="animate-pulse text-blue-600">Loading...</div>
+                <div className="animate-pulse text-cyan-300 font-black pixel-text text-sm">
+                  {isLoadingProgress ? "LOADING PROGRESS..." : "LOADING..."}
+                </div>
               </>
             )}
           </div>
@@ -454,104 +1131,170 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     }
     if (initialLevel === 1) {
       return (
-      <div className="min-h-screen bg-[#1a222b] flex items-center justify-center p-1 sm:p-2 lg:p-4">
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-3 sm:p-4 lg:p-8 shadow-xl max-w-2xl w-full text-center relative mx-1 sm:mx-2">
-    {/* Icon */}
-    <div className="flex justify-center mb-4">
-      <Factory className="w-10 h-10 text-black bg-cyan-300 p-2 border-2 border-black" />
-    </div>
-
-    {/* Title */}
-    <h1 className="text-white font-mono text-lg lg:text-2xl font-bold tracking-widest mb-2">
-      Medical Coding
-    </h1>
-
-    {/* Subtitle */}
-    <p className="text-white opacity-90 lg:mb-6 text-xs lg:text-sm tracking-wide">
-     Test your knowledge of Medical Coding<br />
-  through interactive case scenarios
-    </p>
-
-    {/* Info Boxes */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-      <div className="bg-blue-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
-        <Clock className="w-6 h-6 mx-auto mb-2" />
-        <h3 className="text-sm font-bold">60 MINUTES</h3>
-        <p className="text-xs">Complete all questions</p>
-      </div>
-      <div className="bg-green-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
-        <Trophy className="w-6 h-6 mx-auto mb-2" />
-        <h3 className="text-sm font-bold">2 LEVELS</h3>
-        <p className="text-xs">Analysis & Solution</p>
-      </div>
-      <div className="bg-orange-600 border-2 border-black text-white p-3 shadow-[3px_3px_0px_black]">
-        <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
-        <h3 className="text-sm font-bold">5 CASES</h3>
-        <p className="text-xs">Random MC scenarios</p>
-      </div>
-    </div>
-
-    {/* Buttons */}
-    <div className="flex justify-center gap-3">
-      <button
-        onClick={startGame}
-        className="bg-green-500 hover:bg-green-600 border-2 border-black text-white font-bold py-2 px-6 shadow-[3px_3px_0px_black] transition-colors duration-200 text-sm"
-      >
-        START Level-1
-      </button>
-      <a
-        href="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-red-500 hover:bg-red-600 border-2 border-black text-white font-bold py-2 px-6 shadow-[3px_3px_0px_black] transition-colors duration-200 text-sm"
-      >
-        WALKTHROUGH VIDEO
-      </a>
-    </div>
-  </div>
-</div>
-
+        <div className="min-h-screen bg-gray-800 flex items-center justify-center p-2 relative">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+          <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+          
+          <div className="pixel-border-thick bg-gradient-to-r from-cyan-600 to-blue-600 p-4 max-w-xl w-full text-center relative z-10">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-cyan-500 pixel-border flex items-center justify-center">
+                <Factory className="w-6 h-6 text-cyan-900" />
+              </div>
+            </div>
+            <h1 className="text-xl font-black text-cyan-100 mb-3 pixel-text">
+             Medical Coding
+            </h1>
+            {/* <p className="text-cyan-100 mb-4 text-sm font-bold">
+              Test your knowledge of Medical Coding through
+              interactive case studies
+            </p> */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="pixel-border bg-gradient-to-r from-blue-700 to-blue-600 p-2">
+                <div className="w-6 h-6 bg-blue-800 pixel-border mx-auto mb-1 flex items-center justify-center">
+                  <Clock className="w-3 h-3 text-blue-300" />
+                </div>
+                <h3 className="font-black text-white text-xs pixel-text">
+                  90 MINUTES
+                </h3>
+                <p className="text-blue-100 text-xs font-bold">
+                  Complete all questions
+                </p>
+              </div>
+              <div className="pixel-border bg-gradient-to-r from-green-700 to-green-600 p-2">
+                <div className="w-6 h-6 bg-green-800 pixel-border mx-auto mb-1 flex items-center justify-center">
+                  <Trophy className="w-3 h-3 text-green-300" />
+                </div>
+                <h3 className="font-black text-white text-xs pixel-text">
+                  2 LEVELS
+                </h3>
+                <p className="text-green-100 text-xs font-bold">
+                  Analysis & Solution
+                </p>
+              </div>
+              <div className="pixel-border bg-gradient-to-r from-orange-700 to-orange-600 p-2">
+                <div className="w-6 h-6 bg-orange-800 pixel-border mx-auto mb-1 flex items-center justify-center">
+                  <AlertTriangle className="w-3 h-3 text-orange-300" />
+                </div>
+                <h3 className="font-black text-white text-xs pixel-text">
+                  5 CASES
+                </h3>
+                <p className="text-orange-100 text-xs font-bold">
+                  Random MC scenarios
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              {hasSavedProgress ? (
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={continueGame}
+                    className="pixel-border bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm"
+                  >
+                    CONTINUE GAME
+                  </button>
+                  {/* {savedProgressInfo && (
+                    <div className="text-xs text-cyan-200 font-bold space-y-1">
+                      <div>Progress: {savedProgressInfo.answeredQuestions}/{savedProgressInfo.totalQuestions} questions answered</div>
+                      <div>Time remaining: {Math.floor(savedProgressInfo.timeRemaining / 60)}:{String(savedProgressInfo.timeRemaining % 60).padStart(2, '0')}</div>
+                    </div>
+                  )} */}
+                </div>
+              ) : (
+                <button
+                  onClick={startGame}
+                  className="pixel-border bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm"
+                >
+                  START SIMULATION
+                </button>
+              )}
+              <button
+                onClick={showWalkthroughVideo}
+                className="pixel-border bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                WALKTHROUGH VIDEO
+              </button>
+            </div>
+          </div>
+        </div>
       );
     } else {
       // Level 2 only UI (HL2)
       return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-teal-900 flex items-center justify-center p-2 lg:p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 lg:p-8 max-w-2xl w-full text-center">
-            <div className="flex justify-center mb-6">
-              <Trophy className="w-12 h-12 lg:w-16 lg:h-16 text-green-600" />
+        <div className="min-h-screen bg-gray-800 flex items-center justify-center p-2 relative">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+          <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+          
+          <div className="pixel-border-thick bg-gradient-to-r from-purple-600 to-purple-700 p-4 max-w-xl w-full text-center relative z-10">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-purple-500 pixel-border flex items-center justify-center">
+                <Trophy className="w-6 h-6 text-purple-900" />
+              </div>
             </div>
-            <h1 className="text-2xl lg:text-4xl font-bold text-gray-800 mb-4">
-              GMP Solution Round
+            <h1 className="text-xl font-black text-purple-100 mb-3 pixel-text">
+              GMP SOLUTION ROUND
             </h1>
-            <p className="text-gray-600 mb-6 lg:mb-8 text-sm lg:text-base">
+            <p className="text-purple-100 mb-4 text-sm font-bold">
               Select the best solutions for each GMP case scenario
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4 mb-6 lg:mb-8">
-              <div className="bg-blue-50 p-3 lg:p-4 rounded-lg">
-                <Clock className="w-6 h-6 lg:w-8 lg:h-8 text-blue-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-800 text-sm lg:text-base">
-                  60 Minutes
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+              <div className="pixel-border bg-gradient-to-r from-blue-700 to-blue-600 p-2">
+                <div className="w-6 h-6 bg-blue-800 pixel-border mx-auto mb-1 flex items-center justify-center">
+                  <Clock className="w-3 h-3 text-blue-300" />
+                </div>
+                <h3 className="font-black text-white text-xs pixel-text">
+                  90 MINUTES
                 </h3>
-                <p className="text-gray-600 text-xs lg:text-sm">
+                <p className="text-blue-100 text-xs font-bold">
                   Complete all solutions
                 </p>
               </div>
-              <div className="bg-orange-50 p-3 lg:p-4 rounded-lg">
-                <AlertTriangle className="w-6 h-6 lg:w-8 lg:h-8 text-orange-600 mx-auto mb-2" />
-                <h3 className="font-semibold text-gray-800 text-sm lg:text-base">
-                  5 Cases
+              <div className="pixel-border bg-gradient-to-r from-orange-700 to-orange-600 p-2">
+                <div className="w-6 h-6 bg-orange-800 pixel-border mx-auto mb-1 flex items-center justify-center">
+                  <AlertTriangle className="w-3 h-3 text-orange-300" />
+                </div>
+                <h3 className="font-black text-white text-xs pixel-text">
+                  5 CASES
                 </h3>
-                <p className="text-gray-600 text-xs lg:text-sm">
-                  Random GMP scenarios
+                <p className="text-orange-100 text-xs font-bold">
+                  Random MC scenarios
                 </p>
               </div>
             </div>
-            <button
-              onClick={startGame}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 lg:px-8 rounded-lg transition-colors duration-200 text-sm lg:text-base"
-            >
-              Start Solution Round
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              {hasSavedProgress ? (
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={continueGame}
+                    className="pixel-border bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm"
+                  >
+                    CONTINUE GAME
+                  </button>
+                  {/* {savedProgressInfo && (
+                    <div className="text-xs text-purple-200 font-bold space-y-1">
+                      <div>Progress: {savedProgressInfo.answeredQuestions}/{savedProgressInfo.totalQuestions} questions answered</div>
+                      <div>Time remaining: {Math.floor(savedProgressInfo.timeRemaining / 60)}:{String(savedProgressInfo.timeRemaining % 60).padStart(2, '0')}</div>
+                    </div>
+                  )} */}
+                </div>
+              ) : (
+                <button
+                  onClick={startGame}
+                  className="pixel-border bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm"
+                >
+                  START SOLUTION ROUND
+                </button>
+              )}
+              <button
+                onClick={showWalkthroughVideo}
+                className="pixel-border bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-black py-2 px-4 pixel-text transition-all transform hover:scale-105 text-sm flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                WALKTHROUGH VIDEO
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -562,17 +1305,21 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
     // After Module 5, show waiting screen if not unlocked
     if (gameState.currentLevel === 1 && !canAccessModule6) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-teal-900">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full text-center">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">
-              Awaiting Team Evaluation
+        <div className="min-h-screen flex items-center justify-center bg-gray-800 relative p-2">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+          <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+          
+          <div className="pixel-border bg-gradient-to-r from-cyan-600 to-blue-600 p-4 max-w-md w-full text-center relative z-10">
+            <h2 className="text-lg font-black mb-3 text-cyan-100 pixel-text">
+              AWAITING TEAM EVALUATION
             </h2>
-            <p className="text-gray-600 mb-6">
-              Your team’s results are being evaluated. Please wait for Module 6
+            <p className="text-cyan-100 mb-4 text-sm font-bold">
+              Your team's results are being evaluated. Please wait for Module 6
               to unlock.
             </p>
-            <div className="animate-pulse text-blue-600">
-              Checking team status...
+            <div className="animate-pulse text-cyan-300 font-black pixel-text text-sm">
+              CHECKING TEAM STATUS...
             </div>
           </div>
         </div>
@@ -587,91 +1334,102 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
   const currentQuestion = gameState.questions[gameState.currentQuestion];
   const progress = ((gameState.currentQuestion + 1) / 5) * 100;
 
-  return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col overflow-hidden">
-      {/* Animated Background */}
-      {/* <div className="fixed inset-0 opacity-5">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/10 via-blue-500/10 to-purple-600/10 animate-pulse"></div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-20">
-          <div className="w-full h-full bg-gradient-to-br from-cyan-500/5 to-blue-600/5 animate-pulse"></div>
-        </div>
-      </div> */}
 
-      {/* Modern Game Header */}
-      <div className="bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50 shadow-lg">
-        <div className="container mx-auto px-4 py-3">
+
+  return (
+    <div className="h-screen bg-gray-800 flex flex-col overflow-hidden relative">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+      <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+
+      {/* Pixel Game Header */}
+      <div className="pixel-border-thick bg-gradient-to-r from-gray-900 to-gray-800 relative z-10">
+        <div className="container mx-auto px-3 py-2">
           <div className="flex items-center justify-between">
             {/* Left - Game Identity */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Level Badge */}
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-lg">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gray-700 pixel-border flex items-center justify-center">
+                  <span className="text-gray-100 font-black text-sm pixel-text">
                     {gameState.currentLevel}
                   </span>
                 </div>
                 <div>
-                  <h1 className="text-white font-semibold text-base">
-                    Level {gameState.currentLevel}
+                  <h1 className="text-gray-100 font-black text-sm pixel-text">
+                    LEVEL {gameState.currentLevel}
                   </h1>
                   {/* Simple Progress Indicator */}
-                  <div className="text-slate-400 text-sm">
-                    Case {gameState.currentQuestion + 1}/5
+                  <div className="text-gray-300 text-xs font-bold">
+                    CASE {gameState.currentQuestion + 1}/5
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Right - Controls */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {/* Mobile Case Brief Button */}
               {isMobileHorizontal && gameState.currentLevel === 1 && (
                 <button
                   onClick={() => setShowCaseBrief(true)}
-                  className="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg transition-colors text-sm font-medium text-white flex items-center gap-2"
+                  className="pixel-border bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 px-2 py-1 transition-all text-xs font-black text-white flex items-center gap-1 pixel-text"
                 >
-                  <Eye className="w-4 h-4" />
-                  Brief
+                  <Eye className="w-3 h-3" />
+                  BRIEF
                 </button>
               )}
 
               {/* Timer */}
-              <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-600/30">
-                <Clock className="w-4 h-4 text-slate-400" />
+              <div className="flex items-center gap-1 pixel-border bg-gradient-to-r from-gray-700 to-gray-600 px-2 py-1">
+                <div className="w-3 h-3 bg-gray-800 pixel-border flex items-center justify-center">
+                  <Clock className="w-2 h-2 text-gray-300" />
+                </div>
                 <Timer
+                  key="game-timer"
                   timeRemaining={gameState.timeRemaining}
                   onTimeUp={handleTimeUp}
-                  setTimeRemaining={(time) =>
-                    setGameState((prev) => ({ ...prev, timeRemaining: time }))
-                  }
+                  setTimeRemaining={handleSetTimeRemaining}
                   initialTime={5400}
+                  isActive={gameState.gameStarted && !gameState.gameCompleted && !gameState.showLevelModal}
                 />
+
+                {/* Auto-save indicator */}
+                {showSaveIndicator && (
+                  <div className="ml-1 text-xs text-green-400 font-bold animate-pulse">
+                    ●
+                  </div>
+                )}
               </div>
 
               {/* Overall Progress */}
-              <div className="hidden sm:flex items-center gap-3 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-600/30">
-                <Trophy className="w-4 h-4 text-yellow-500" />
-                <div className="flex items-center gap-2">
-                  <div className="w-20 h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div className="hidden sm:flex items-center gap-2 pixel-border bg-gradient-to-r from-gray-700 to-gray-600 px-2 py-1">
+                <div className="w-3 h-3 bg-yellow-600 pixel-border flex items-center justify-center">
+                  <Trophy className="w-2 h-2 text-yellow-300" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-16 h-2 bg-gray-800 pixel-border overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
                       style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <span className="text-white text-sm font-medium min-w-[3rem]">
+                  <span className="text-white text-xs font-black min-w-[2rem] pixel-text">
                     {Math.round(progress)}%
                   </span>
                 </div>
               </div>
+
+
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 container mx-auto px-2 min-h-0">
+      <div className="flex-1 container mx-auto px-1 min-h-0">
         {/* Question Card */}
-        {currentQuestion && (
+        {currentQuestion && gameState.questions.length > 0 && gameState.currentQuestion < gameState.questions.length ? (
           <QuestionCard
             question={currentQuestion}
             level={gameState.currentLevel}
@@ -681,6 +1439,38 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
             session_id={session_id}
             email={email}
           />
+        ) : gameState.gameStarted && (
+          <div className="flex items-center justify-center h-full">
+            <div className="pixel-border bg-gradient-to-r from-red-600 to-red-700 p-6 text-center max-w-md">
+              <h3 className="text-white font-black pixel-text mb-4 text-lg">GAME STATE ERROR</h3>
+              <div className="text-red-100 text-sm space-y-2">
+                <p>Question {gameState.currentQuestion + 1} not found.</p>
+                <p>Questions available: {gameState.questions.length}</p>
+                <p>Current index: {gameState.currentQuestion}</p>
+                <p>Game started: {gameState.gameStarted ? "Yes" : "No"}</p>
+              </div>
+              <div className="flex gap-2 mt-4 justify-center">
+                <button
+                  onClick={() => {
+                    setGameState(prev => ({
+                      ...prev,
+                      currentQuestion: 0,
+                      gameStarted: false
+                    }));
+                  }}
+                  className="pixel-border bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-2 text-xs font-bold"
+                >
+                  RESET TO START
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="pixel-border bg-red-500 hover:bg-red-400 text-white px-3 py-2 text-xs font-bold"
+                >
+                  RELOAD GAME
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Level Complete Modal */}
@@ -693,9 +1483,9 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
 
         {/* Module 6 Button (only if unlocked) */}
         {canAccessModule6 && gameState.currentLevel === 1 && (
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center mt-4">
             <button
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg"
+              className="pixel-border bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-black py-2 px-4 pixel-text text-sm"
               onClick={() =>
                 setGameState((prev) => {
                   // Preserve Level 1 answers and questions
@@ -728,7 +1518,7 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
                 })
               }
             >
-              Start Module 6
+              START MODULE 6
             </button>
           </div>
         )}
@@ -736,40 +1526,48 @@ const GameEngine: React.FC<GmpSimulationProps> = ({
         {/* PROBLEM SCENARIO Modal - Only visible when toggled in mobile horizontal */}
         {showCaseBrief && currentQuestion && (
           <div
-            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-2"
             onClick={() => setShowCaseBrief(false)}
           >
             <div
-              className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 border border-cyan-500/20 rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+              className="pixel-border-thick bg-gradient-to-r from-cyan-600 to-blue-600 p-4 max-w-lg w-full max-h-[80vh] overflow-y-auto relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <Eye className="w-5 h-5 text-cyan-400" />
-                  <h3 className="text-lg font-bold text-white">
-                    PROBLEM SCENARIO
-                  </h3>
-                  <div className="bg-cyan-500/20 px-3 py-1 rounded-full">
-                    <span className="text-cyan-300 font-bold text-sm">
-                      ACTIVE
-                    </span>
+              {/* Background Pattern */}
+              <div className="absolute inset-0 bg-pixel-pattern opacity-10"></div>
+              <div className="absolute inset-0 bg-scan-lines opacity-20"></div>
+              
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-5 h-5 bg-cyan-500 pixel-border flex items-center justify-center">
+                      <Eye className="w-3 h-3 text-cyan-900" />
+                    </div>
+                    <h3 className="text-base font-black text-cyan-100 pixel-text">
+                      PROBLEM SCENARIO
+                    </h3>
+                    <div className="pixel-border bg-gradient-to-r from-green-600 to-green-500 px-2 py-1">
+                      <span className="text-green-100 font-black text-xs pixel-text">
+                        ACTIVE
+                      </span>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => setShowCaseBrief(false)}
+                    className="pixel-border bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-red-100 hover:text-white transition-all text-lg font-black w-6 h-6 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowCaseBrief(false)}
-                  className="text-slate-400 hover:text-white transition-colors duration-200 text-2xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="bg-slate-700/50 p-4 rounded-lg border border-cyan-500/20">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-red-500 rounded-full mt-2 animate-pulse flex-shrink-0"></div>
-                  <p className="text-gray-200 text-sm leading-relaxed">
-                    {currentQuestion.caseFile} Read the scenario carefully, spot
-                    the violation and its root cause, and place them in the
-                    right category containers.
-                  </p>
+                <div className="pixel-border bg-gradient-to-r from-gray-700 to-gray-600 p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-2 h-2 bg-red-500 pixel-border mt-1 animate-pulse flex-shrink-0"></div>
+                    <p className="text-gray-100 text-sm leading-relaxed font-bold">
+                      {currentQuestion.caseFile} Read the scenario carefully, spot
+                      the violation and its root cause, and place them in the
+                      right category containers.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
