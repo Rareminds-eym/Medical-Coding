@@ -16,7 +16,8 @@ const ModuleMapScreen: React.FC = () => {
     if (userEmail === "hackathontest@gmail.com") {
       // For hackathontest@gmail.com: unlock HL1 & HL2, lock 1,2,3,4
       return initialModules.map(module => {
-        if (module.id === "HL1" || module.id === "HL2") {
+        if (module.id === "HL1") {
+          //  if (module.id === "HL1" || module.id === "HL2") {
           return { ...module, status: 'available' as const };
         } else if (module.id === "1" || module.id === "2" || module.id === "3" || module.id === "4") {
           return { ...module, status: 'locked' as const };
@@ -51,12 +52,14 @@ const ModuleMapScreen: React.FC = () => {
     const selectedModule = modules.find(m => m.id === moduleId);
     
     if (selectedModule && (selectedModule.status === 'available' || selectedModule.status === 'completed')) {
-      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-      if (!isNaN(numericId)) {
-        setCurrentModuleId(numericId);
+      // Handle numeric IDs for regular modules
+      if (typeof id === 'number') {
+        setCurrentModuleId(id);
+      } else if (!isNaN(parseInt(moduleId, 10))) {
+        setCurrentModuleId(parseInt(moduleId, 10));
       }
       
-      // In a real app, this would navigate to the module content
+      // Log selection for debugging
       console.log(`Selected module ${moduleId}: ${selectedModule.title}`);
       
       // Demo: Show alert for now

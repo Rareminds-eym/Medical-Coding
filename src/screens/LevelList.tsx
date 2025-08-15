@@ -18,9 +18,35 @@ const LevelList: React.FC = () => {
   const { isMobile, isHorizontal } = useDeviceLayout();
   const isMobileLandscape = isMobile && isHorizontal;
 
+  // Check if we're dealing with a special module like HL1 or HL2
+  const isHackathonModule = moduleId === 'HL1' || moduleId === 'HL2';
+
   // Get module from location state or find by ID
-  const module: Module = location.state?.module ||
-    GMP_MODULES.find(m => m.id === parseInt(moduleId || '0'));
+  const module: Module = location.state?.module || 
+    (isHackathonModule 
+      ? {
+          id: moduleId,
+          title: moduleId === 'HL1' ? 'Hackathon Level-1' : 'Hackathon Level-2',
+          description: 'Special GMP simulation module for hackathon',
+          icon: '🔬',
+          color: '#FF6B6B',
+          position: { x: 10, y: 80 },
+          completed: false,
+          unlocked: true,
+          levels: [
+            {
+              id: 1,
+              name: 'GMP Simulation',
+              description: 'Identify violations and root causes in GMP scenarios',
+              difficulty: 'Intermediate',
+              stars: 3,
+              taxonomy: 'Apply',
+              completed: false,
+              unlocked: true,
+            }
+          ]
+        } 
+      : GMP_MODULES.find(m => m.id === parseInt(moduleId || '0')));
 
   // Use level progress hook for database-backed progress tracking
   const {
