@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react'
+import { AlertCircle, CheckCircle, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
 
-import { useAuth } from '../../contexts/AuthContext'
-import { supabase } from '../../lib/supabase'
-import { useDeviceLayout } from '../../hooks/useOrientation'
-import { collegeCodes as collegeCodeList } from '../../data/collegeCodes'
+import { useAuth } from '../../contexts/AuthContext';
+import { collegeCodes as collegeCodeList } from '../../data/collegeCodes';
+import { useDeviceLayout } from '../../hooks/useOrientation';
+import { supabase } from '../../lib/supabase';
 
 interface AuthFormProps {
   mode: 'login' | 'signup' | 'forgot-password'
@@ -31,7 +31,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
   const [showResendLink, setShowResendLink] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('');
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState('')
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
 
   // Use imported collegeCodes and map to dropdown structure
   const collegeCodes = collegeCodeList.map(code => ({ code }));
@@ -115,7 +116,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
         // Validate college code against the list
         const validCollegeCodes = collegeCodes.map(c => c.code.toLowerCase());
         if (!validCollegeCodes.includes(formData.collegeCode.trim().toLowerCase())) {
-          setError('College code not found. Contact HelpDesk for assistance');
+          setError('College code not found. Contact HelpDesk for assistance.');
           return false;
         }
       } else {
@@ -171,35 +172,42 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
           // 1. Check if email already exists in teams table
           const { data: existingEmailRows, error: emailCheckError } = await supabase
             .from('teams')
-            .select('email')
+            .select('*')
             .eq('email', formData.email);
           if (emailCheckError) {
             setError('Error checking email. Please try again.');
             setIsSubmitting(false);
             return;
           }
+
+          let shouldUpdateExisting = false;
+          let existingRecord = null;
           if (existingEmailRows && existingEmailRows.length > 0) {
-            setError('An account with this email already exists. Please use a different email.');
-            setIsSubmitting(false);
-            return;
+            shouldUpdateExisting = true;
+            existingRecord = existingEmailRows[0];
           }
-          // 2. Check if team name already exists
-          const { data: existingTeams, error: teamCheckError } = await supabase
-            .from('teams')
-            .select('team_name')
-            .ilike('team_name', formData.teamName);
-          if (teamCheckError) {
-            setError('Error checking team name. Please try again.');
-            setIsSubmitting(false);
-            return;
+
+          // 2. Check if team name already exists (only if not updating existing record)
+          if (!shouldUpdateExisting) {
+            const { data: existingTeams, error: teamCheckError } = await supabase
+              .from('teams')
+              .select('team_name')
+              .ilike('team_name', formData.teamName);
+            if (teamCheckError) {
+              setError('Error checking team name. Please try again.');
+              setIsSubmitting(false);
+              return;
+            }
+            if (existingTeams && existingTeams.length > 0) {
+              setError('Team name already exists, try a different name');
+              setIsSubmitting(false);
+              return;
+            }
           }
-          if (existingTeams && existingTeams.length > 0) {
-            setError('Team name already exists, try a different name');
-            setIsSubmitting(false);
-            return;
-          }
-          const joinCode = generateJoinCode().toUpperCase().trim();
-          const sessionId = uuidv4();
+          // Keep existing join code for team leaders, generate new for new teams
+          const joinCode = shouldUpdateExisting ? existingRecord.join_code : generateJoinCode().toUpperCase().trim();
+          const sessionId = shouldUpdateExisting ? existingRecord.session_id : uuidv4();
+
           const { error } = await signUp(
             formData.email,
             formData.password,
@@ -242,9 +250,22 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
           if (user && user.id) {
             teamRow.user_id = user.id;
           }
-          const { error: insertError } = await supabase.from('teams').insert([teamRow]);
-          if (insertError) {
-            setError('Team creation failed: ' + insertError.message);
+
+          // Update existing record or insert new one
+          let dbError;
+          if (shouldUpdateExisting) {
+            const { error: updateError } = await supabase
+              .from('teams')
+              .update(teamRow)
+              .eq('email', formData.email);
+            dbError = updateError;
+          } else {
+            const { error: insertError } = await supabase.from('teams').insert([teamRow]);
+            dbError = insertError;
+          }
+
+          if (dbError) {
+            setError(`Team ${shouldUpdateExisting ? 'update' : 'creation'} failed: ` + dbError.message);
             setIsSubmitting(false);
             return;
           }
@@ -334,7 +355,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
             return;
           }
           setSuccess('Account created and joined team. Please go to email and verify your account.');
-          setShowResendLink(true);
         }
       }
     } catch (err) {
@@ -344,7 +364,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
       setIsSubmitting(false);
     }
   };
-  
+
   // Resend verification email logic
   const handleResendVerification = async () => {
     setResendMessage('');
@@ -360,7 +380,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
     }
   };
 
-   // Handle forgot password
+  // Handle forgot password
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!forgotPasswordEmail.trim()) {
@@ -368,15 +388,39 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
       return;
     }
 
+    // Basic email validation
+    if (!/\S+@\S+\.\S+/.test(forgotPasswordEmail.trim())) {
+      setForgotPasswordMessage('Please enter a valid email address.');
+      return;
+    }
+
     setIsSubmitting(true);
     setForgotPasswordMessage('');
+    setForgotPasswordSuccess(false);
 
-    const { error } = await resetPassword(forgotPasswordEmail);
+    const { error } = await resetPassword(forgotPasswordEmail.trim());
 
     if (error) {
-      setForgotPasswordMessage(error.message || 'Failed to send reset email. Please try again.');
+      // Provide user-friendly error messages
+      setForgotPasswordSuccess(false);
+
+      if (error.name === 'UserNotFound') {
+        setForgotPasswordMessage('No account found with this email address. Please check your email or sign up for a new account.');
+      } else if (error.name === 'RateLimited') {
+        setForgotPasswordMessage('Too many requests. Please wait a few minutes before trying again.');
+      } else if (error.name === 'InvalidEmail') {
+        setForgotPasswordMessage('Please enter a valid email address.');
+      } else if (error.name === 'NetworkError') {
+        setForgotPasswordMessage('Connection issue. Please check your internet and try again.');
+      } else if (error.name === 'ResetError') {
+        setForgotPasswordMessage('Unable to send reset email. Please try again later.');
+      } else {
+        // Fallback for any other errors
+        setForgotPasswordMessage('Something went wrong. Please try again in a few moments.');
+      }
     } else {
-      setForgotPasswordMessage('Password reset email sent! Check your inbox and follow the instructions.');
+      setForgotPasswordSuccess(true);
+      setForgotPasswordMessage('Password reset email sent! Check your inbox and follow the instructions to reset your password.');
     }
 
     setIsSubmitting(false);
@@ -404,12 +448,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
               </div>
             )}
             {success && (
-              <div className="flex flex-col items-center gap-2 bg-green-700/90 border border-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-fade-in w-full">
+             <div className="flex flex-col items-center gap-2 bg-green-700/90 border border-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-fade-in w-full">
                 <div className="flex items-center gap-2 w-full justify-center">
-                  <CheckCircle className="h-5 w-5 text-green-300" />
-                  <span className="font-medium">{success}</span>
-                </div>
-                {showResendLink && (
+                <CheckCircle className="h-5 w-5 text-green-300" />
+                <span className="font-medium">{success}</span>
+              </div>
+             {showResendLink && (
                   <>
                     <button
                       onClick={handleResendVerification}
@@ -425,25 +469,25 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                   </>
                 )}
               </div>
-            )}
+            )} 
           </div>
         ) : (
           <>
-            <div className="w-full flex justify-center mb-4">
-              {error && (
-                <div className="flex items-center gap-2 bg-red-700/80 border border-red-500 text-white px-4 py-2 rounded-md shadow-md animate-fade-in">
-                  <AlertCircle className="h-5 w-5 text-red-300" />
-                  <span className="font-medium">{error}</span>
-                </div>
-              )}
-              {success && (
-                <div className="flex items-center gap-2 bg-green-700/80 border border-green-500 text-white px-4 py-2 rounded-md shadow-md animate-fade-in">
-                  <CheckCircle className="h-5 w-5 text-green-300" />
-                  <span className="font-medium">{success}</span>
-                </div>
-              )}
-            </div>
-            {/* Resend verification link UI for desktop */}
+          <div className="w-full flex justify-center mb-4">
+            {error && (
+              <div className="flex items-center gap-2 bg-red-700/80 border border-red-500 text-white px-4 py-2 rounded-md shadow-md animate-fade-in">
+                <AlertCircle className="h-5 w-5 text-red-300" />
+                <span className="font-medium">{error}</span>
+              </div>
+            )}
+            {success && (
+              <div className="flex items-center gap-2 bg-green-700/80 border border-green-500 text-white px-4 py-2 rounded-md shadow-md animate-fade-in">
+                <CheckCircle className="h-5 w-5 text-green-300" />
+                <span className="font-medium">{success}</span>
+              </div>
+            )}
+          </div>
+          {/* Resend verification link UI for desktop */}
             {showResendLink && success && (
               <div className="w-full flex justify-center mb-2">
                 <div className="text-center">
@@ -484,7 +528,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
           <p className={`${isMobileLandscape ? 'text-xs text-white' : (mode === 'login' ? 'text-gray-300' : 'text-white')}`}>
             {mode === 'login' 
               ? 'Sign in to continue your quality journey' 
-              : 'Start your coding precision adventure'
+              : 'Start your medical coding mastery'
             }
           </p>
         </div>
@@ -629,14 +673,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                 <div className="flex gap-4">
                   <button
                     type="button"
-                    className={`px-4 py-2 rounded-md border font-medium focus:outline-none transition-colors duration-150 ${formData.isTeamLeader === true ? 'bg-blue-600 text-white border-blue-700' : 'bg-white/10 text-white border-slate-700/50 hover:bg-blue-500'}`}
+                    className={`px-4 py-2 rounded-md border font-medium focus:outline-none transition-colors duration-150 ${formData.isTeamLeader === true ? 'bg-blue-600 text-white border-blue-700' : 'bg-white/10 text-white border-slate-700/50 hover:bg-blue-700/30'}`}
                     onClick={() => { setFormData(prev => ({ ...prev, isTeamLeader: true, joinCode: '' })); setError(''); setSuccess(''); }}
                   >
                     Yes
                   </button>
                   <button
                     type="button"
-                    className={`px-4 py-2 rounded-md border font-medium focus:outline-none transition-colors duration-150 ${formData.isTeamLeader === false ? 'bg-blue-600 text-white border-blue-700' : 'bg-white/10 text-white border-slate-700/50 hover:bg-blue-500'}`}
+                    className={`px-4 py-2 rounded-md border font-medium focus:outline-none transition-colors duration-150 ${formData.isTeamLeader === false ? 'bg-blue-600 text-white border-blue-700' : 'bg-white/10 text-white border-slate-700/50 hover:bg-blue-700/30'}`}
                     onClick={() => { setFormData(prev => ({ ...prev, isTeamLeader: false, teamName: '', collegeCode: '' })); setError(''); setSuccess(''); }}
                   >
                     No
@@ -728,7 +772,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
+                  className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
                 >
                   {isSubmitting ? (
                     <>
@@ -743,7 +787,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-300 hover:from-cyan-500 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
+                  className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
                 >
                   {isSubmitting ? (
                     <>
@@ -809,7 +853,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
               </div>
             )}
           </form>
-          ) : mode === 'forgot-password' ? (
+        ) : mode === 'forgot-password' ? (
           <form onSubmit={handleForgotPassword} className="space-y-4 w-full">
             <div className="space-y-2">
               <label className={`block font-medium text-white mb-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>Email Address</label>
@@ -822,7 +866,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                   name="forgotPasswordEmail"
                   type="email"
                   value={forgotPasswordEmail}
-                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  onChange={(e) => {
+                    setForgotPasswordEmail(e.target.value);
+                    // Clear any previous messages when user starts typing
+                    if (forgotPasswordMessage) {
+                      setForgotPasswordMessage('');
+                      setForgotPasswordSuccess(false);
+                    }
+                  }}
                   required
                   className={`w-full ${isMobile ? 'px-2 py-1 text-xs' : 'px-4 py-2'} bg-white/10 border border-slate-700/50 rounded-md shadow-sm placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-white pl-10`}
                   placeholder="Enter your email address"
@@ -831,9 +882,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
             </div>
 
             {forgotPasswordMessage && (
-              <div className={`p-3 rounded-lg ${forgotPasswordMessage.includes('sent') ? 'bg-green-700/90 border border-green-500 text-white' : 'bg-red-700/90 border border-red-500 text-white'}`}>
+              <div className={`p-3 rounded-lg ${forgotPasswordSuccess ? 'bg-green-700/90 border border-green-500 text-white' : 'bg-red-700/90 border border-red-500 text-white'}`}>
                 <div className="flex items-center gap-2">
-                  {forgotPasswordMessage.includes('sent') ? (
+                  {forgotPasswordSuccess ? (
                     <CheckCircle className="h-5 w-5 text-green-300" />
                   ) : (
                     <AlertCircle className="h-5 w-5 text-red-300" />
@@ -847,7 +898,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
+                className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-green-400 via-cyan-600 to-emerald-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
               >
                 {isSubmitting ? (
                   <>
@@ -909,6 +960,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                 </button>
               </div>
             </div>
+
             {/* Forgot Password Link */}
             <div className="text-right">
               <button
@@ -919,11 +971,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                 Forgot Password?
               </button>
             </div>
+
             <div className="flex justify-center mt-6">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
+                className={`flex justify-center items-center rounded-lg shadow-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-700 hover:from-blue-500 hover:via-cyan-400 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] transition-all duration-200 w-full max-w-xs ${isMobile ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-base'}`}
               >
                 {isSubmitting ? (
                   <>
@@ -963,7 +1016,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode, onForgotPasswor
                   {mode === 'login' ? 'Sign up' : 'Sign in'}
                 </button>
               </>
-            )} 
+            )}
           </p>
         </div>
       </div>

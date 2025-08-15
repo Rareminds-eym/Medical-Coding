@@ -1,13 +1,13 @@
-import React, { useRef, useState, useEffect } from "react";
-import ProfileInfo from "../components/ProfileInfo";
-import { Icon } from '@iconify/react';
+import { Icon } from "@iconify/react";
+import { motion } from "framer-motion";
+import { X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import ProfileInfo from "../components/ProfileInfo";
 import { Button } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
-import { motion } from "framer-motion";
-import { useDeviceLayout } from "../hooks/useOrientation";
 import { useGameUnlock } from "../hooks/useGameUnlock";
-import { X } from 'lucide-react';
+import { useDeviceLayout } from "../hooks/useOrientation";
 
 // Avatar options for modal
 const AVATAR_OPTIONS = [
@@ -46,11 +46,11 @@ const AVATAR_OPTIONS = [
   {
     label: "Niharika",
     src: "/characters/Intern9.png",
-  }, 
+  },
   {
     label: "Shiney",
     src: "/characters/Intern10.png",
-  }
+  },
 ];
 
 const HomeScreen: React.FC = () => {
@@ -59,6 +59,8 @@ const HomeScreen: React.FC = () => {
   const { user, logout } = useAuth(); // Get user and logout
   const [profileOpen, setProfileOpen] = useState(false);
   const layout = useDeviceLayout();
+
+  // Game unlock functionality
   const { isGameLocked, isLoading } = useGameUnlock();
 
   // Avatar selection state, default to Intern 1, load from localStorage if available
@@ -68,6 +70,9 @@ const HomeScreen: React.FC = () => {
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showGameLocked, setShowGameLocked] = useState(false);
+  // Remove teamInfo state, only use user context
+  // Get collegeCode from user context if available
+  // (moved to below)
 
   useEffect(() => {
     localStorage.setItem("selectedAvatar", avatar);
@@ -115,52 +120,50 @@ const HomeScreen: React.FC = () => {
     navigate("/auth", { replace: true });
   };
 
+  // Removed team info fetch logic, only using user context
+
   return (
     <div
-      className={`min-h-screen w-screen relative bg-cover bg-center flex flex-col overflow-hidden${
+      className={`min-h-screen max-h-screen relative bg-cover bg-center flex flex-col overflow-y-auto${
         layout.isMobile && layout.isHorizontal ? " px-2 py-2" : ""
       }`}
       style={{ backgroundImage: `url('/backgrounds/Homepagebg.webp')` }}
     >
-      {/* Prevent scrolling globally for this screen */}
-      <style>{`
-        html, body {
-          overflow: hidden !important;
-        }
-      `}</style>
       {/* Social Media Vertical Bar */}
       <div className="fixed top-1/2 left-0 z-40 -translate-y-1/2 flex flex-col gap-3 p-2 bg-white/10 rounded-r-2xl shadow-lg backdrop-blur-md border-l-4 border-blue-500">
         {[
           {
-            label: 'RareMinds',
-            icon: <img src="/icons/icon-128x128.png" alt="RareMinds Logo" className="w-7 h-7" />,
-            url: 'https://rareminds.in',
-            color: 'hover:bg-blue-200',
+            label: "RareMinds",
+            icon: (
+              <img
+                src="/logos/bulb.png"
+                alt="RareMinds Bulb"
+                width={28}
+                height={28}
+              />
+            ),
+            url: "https://www.rareminds.in/",
+            color: "hover:bg-yellow-200",
           },
           {
-            label: 'Instagram',
-            icon: <Icon icon="mdi:instagram" width={28} height={28} />,
-            url: 'https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw==',
-            color: 'hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400',
+            label: "Instagram",
+            icon: <Icon icon="mdi:instagram" width={28} height={28} />, // color handled below
+            url: "https://www.instagram.com/rareminds_eym/?hl=en",
+            color:
+              "hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400",
           },
           {
-            label: 'Facebook',
+            label: "Facebook",
             icon: <Icon icon="mdi:facebook" width={28} height={28} />,
-            url: 'https://www.facebook.com/profile.php?id=61576552526095',
-            color: 'hover:bg-blue-700',
+            url: "https://www.facebook.com/profile.php?id=61576552526095",
+            color: "hover:bg-blue-700",
           },
           {
-            label: 'LinkedIn',
+            label: "LinkedIn",
             icon: <Icon icon="mdi:linkedin" width={28} height={28} />,
-            url: 'https://www.linkedin.com/company/rareminds/',
-            color: 'hover:bg-blue-800',
+            url: "https://www.linkedin.com/company/rareminds/",
+            color: "hover:bg-blue-800",
           },
-          // {
-          //   label: 'YouTube',
-          //   icon: <Icon icon="mdi:youtube" width={28} height={28} color="#FF0000" />,
-          //   url: 'https://www.youtube.com/',
-          //   color: 'hover:bg-red-600',
-          // },
         ].map((item, idx) => (
           <motion.a
             key={item.label}
@@ -171,7 +174,11 @@ const HomeScreen: React.FC = () => {
             title={item.label}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 + idx * 0.08, type: 'spring' }}
+            transition={{
+              duration: 0.4,
+              delay: 0.1 + idx * 0.08,
+              type: "spring",
+            }}
             whileHover={{ scale: 1.18, rotate: 6 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -186,19 +193,31 @@ const HomeScreen: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div
             className={`bg-gradient-to-br from-blue-300 to-cyan-500 rounded-2xl shadow-2xl p-8 sm:p-6 w-full flex flex-col items-center relative backdrop-blur-md transition-all duration-300
-              ${layout.isMobile && layout.isHorizontal ? 'max-w-md min-w-[340px] p-2' : 'max-w-3xl'}`}
+              ${
+                layout.isMobile && layout.isHorizontal
+                  ? "max-w-md min-w-[340px] p-2"
+                  : "max-w-3xl"
+              }`}
           >
-            <h2 className={`font-bold mb-6 text-white drop-shadow ${layout.isMobile && layout.isHorizontal ? 'text-lg' : 'text-2xl'}`}>
+            <h2
+              className={`font-bold mb-6 text-white drop-shadow ${
+                layout.isMobile && layout.isHorizontal ? "text-lg" : "text-2xl"
+              }`}
+            >
               Choose Your Avatar
             </h2>
-            <div className={`grid grid-cols-4 w-full mb-2 ${layout.isMobile && layout.isHorizontal ? 'gap-4' : 'gap-12'}`}>
+            <div
+              className={`grid grid-cols-4 w-full mb-2 ${
+                layout.isMobile && layout.isHorizontal ? "gap-4" : "gap-12"
+              }`}
+            >
               {AVATAR_OPTIONS.map((option) => (
                 <button
                   key={option.label}
                   className={`flex flex-col items-center justify-center rounded-2xl border-2 transition-all bg-white/80 hover:bg-white ${
                     layout.isMobile && layout.isHorizontal
-                      ? 'p-2 min-w-[60px] min-h-[60px]'
-                      : 'p-4'
+                      ? "p-2 min-w-[60px] min-h-[60px]"
+                      : "p-4"
                   } ${
                     avatar === option.src
                       ? "border-blue-500 ring-2 ring-blue-300"
@@ -213,9 +232,19 @@ const HomeScreen: React.FC = () => {
                   <img
                     src={option.src}
                     alt={option.label}
-                    className={`${layout.isMobile && layout.isHorizontal ? 'w-14 h-14' : 'w-24 h-24'} rounded-full object-cover border border-gray-200 mb-2`}
+                    className={`${
+                      layout.isMobile && layout.isHorizontal
+                        ? "w-14 h-14"
+                        : "w-24 h-24"
+                    } rounded-full object-cover border border-gray-200 mb-2`}
                   />
-                  <span className={`font-semibold text-blue-900 ${layout.isMobile && layout.isHorizontal ? 'text-xs' : 'text-base'}`}>
+                  <span
+                    className={`font-semibold text-blue-900 ${
+                      layout.isMobile && layout.isHorizontal
+                        ? "text-xs"
+                        : "text-base"
+                    }`}
+                  >
                     {option.label}
                   </span>
                 </button>
@@ -234,39 +263,44 @@ const HomeScreen: React.FC = () => {
       )}
       {/* Player avatar top right with dropdown */}
       <div
-        className={`absolute top-4 right-4 z-30 flex flex-col items-end gap-5${layout.isMobile && layout.isHorizontal ? " scale-90" : ""}`}
+        className={`absolute top-4 right-4 z-30${
+          layout.isMobile && layout.isHorizontal ? " scale-90" : ""
+        }`}
       >
-        {/* Profile Avatar with dropdown (top) */}
-        <div className="relative mb-2">
+        <div className="relative flex flex-col items-center gap-3">
           <img
             src={avatar}
             alt="Player Avatar"
-            className="w-16 h-16 rounded-full border-4 border-blue-500 shadow-[0_0_16px_4px_rgba(37,99,235,0.7)] cursor-pointer transition-all duration-300"
+            className="w-16 h-16 rounded-full border-4 border-blue-500 shadow-[0_0_32px_8px_rgba(59,130,246,0.55)] cursor-pointer transition-all duration-300"
             onClick={() => setProfileOpen((v) => !v)}
             tabIndex={0}
-            onBlur={() => setTimeout(() => setProfileOpen(false), 150)}
           />
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-52 bg-gradient-to-br from-blue-300 to-cyan-100 rounded-xl shadow-lg py-4 px-5 flex flex-col items-center animate-fade-in z-40 backdrop-blur-md">
-                <span className="font-bold text-lg text-blue-900 mb-3 text-center tracking-wide break-words break-all">
-                  {user?.user_metadata?.full_name || user?.email || "Player"}
-                </span>
+            <div 
+              className="absolute top-[4.5rem] right-0 w-52 from-blue-300 to-cyan-100 rounded-xl shadow-lg py-4 px-5 flex flex-col items-center animate-fade-in z-40 backdrop-blur-md"
+              onMouseLeave={() => setProfileOpen(false)}
+            >
+              <span className="font-bold text-lg text-blue-900 mb-3 text-center tracking-wide break-words break-all">
+                {user?.user_metadata?.full_name || user?.email || "Player"}
+              </span>
               {/* Avatars button */}
               <Button
                 size="sm"
-                variant="primary"
                 className="w-full mb-3"
-                onClick={() => setShowAvatarModal(true)}
+                onClick={() => {
+                  setShowAvatarModal(true);
+                  setProfileOpen(false);
+                }}
               >
                 Avatars
               </Button>
               <Button
                 size="sm"
-                variant="primary"
                 className="w-full mb-3"
                 onClick={() => {
-                  console.log('Information button clicked');
+                  console.log("Information button clicked");
                   setShowInfoModal(true);
+                  setProfileOpen(false);
                 }}
               >
                 Information
@@ -274,67 +308,43 @@ const HomeScreen: React.FC = () => {
               {/* Logout button removed from profile dropdown */}
             </div>
           )}
+          {/* Extra logos below avatar */}
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <a
+              href="https://us06web.zoom.us/j/86412214284?pwd=I8U47ItobcPBHvKgzmwsDAckIPBFYY.1"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-16 h-16 flex items-center justify-center rounded-xl bg-white/80 border-2 border-blue-500 shadow-md hover:bg-blue-200 transition-all"
+              title="Help Desk"
+            >
+              <img
+                src="/logos/helpdesk.png"
+                alt="Help Desk"
+                width={32}
+                height={32}
+              />
+            </a>
+            <a
+              href="https://naanmudhalvan.tn.gov.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-16 h-16 flex items-center justify-center rounded-xl bg-white/80 border-2 p-1 border-blue-500 shadow-md hover:bg-green-200 transition-all"
+              title="RareMinds Website"
+            >
+              <img
+                src="/logos/nmlogo.png"
+                alt="RareMinds Logo"
+                className="w-auto"
+                height={32}
+              />
+            </a>
+          </div>
         </div>
-        {/* Instagram icon below profile */}
-        {/* <a
-          href="https://www.instagram.com/rareminds.uni?igsh=MTV6NTNwa3N6cmcycw=="
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 bg-white/80 border-2 border-blue-500 shadow-md hover:scale-110 hover:bg-gradient-to-tr hover:from-pink-500 hover:to-yellow-400 mb-1"
-          title="Instagram"
-        >
-          <span className="transition-colors duration-200 group-hover:text-white text-gray-700">
-            <Icon icon="mdi:instagram" width={28} height={28} />
-          </span>
-        </a> */}
-        {/* Help (middle) */}
-        <a
-          href="https://us06web.zoom.us/j/86412214284?pwd=I8U47ItobcPBHvKgzmwsDAckIPBFYY.1" // Replace with your actual Zoom link
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-100 transition"
-          title="Help Desk Zoom"
-        >
-          <img src="/icons/helpdesk.png" alt="Help Desk" className="w-10 h-10 object-contain" />
-        </a>
-        {/* Logo (bottom) */}
-        <a
-          href="https://naanmudhalvan.tn.gov.in/"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Naan Mudhalvan Website"
-        >
-          <img
-            src="/logos/nmlogo.png"
-            alt="NM Logo"
-            className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400"
-          />
-        </a>
-
-        {/* <a
-          href="https://www.youtube.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="YouTube"
-        >
-          <img
-            src="/logos/nmlogo.png"
-            alt="NM Logo"
-            className="w-16 h-16 drop-shadow-lg bg-white/80 rounded-xl p-2 border-2 border-blue-400"
-          />
-        </a> */}
       </div>
       {/* Profile Info Modal */}
       {showInfoModal && (
         <ProfileInfo
-          name={user?.user_metadata?.full_name || ""}
-          phone={user?.user_metadata?.phone || ""}
-          teamName={user?.user_metadata?.team_name || ""}
-          teamLeader={user?.user_metadata?.team_lead || ""}
-          teamMembers={user?.user_metadata?.team_members ?? []}
           email={user?.email || ""}
-          collegeCode={user?.user_metadata?.college_code || ""}
-          joinCode={user?.user_metadata?.join_code || ""}
           onClose={() => setShowInfoModal(false)}
         />
       )}
@@ -359,13 +369,13 @@ const HomeScreen: React.FC = () => {
               <Icon icon="mdi:code-tags" width={38} height={38} />
             </span>
             <span
-              className="bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-600 bg-clip-text text-transparent drop-shadow-lg shadow-blue-200 px-1 rounded-lg text-3xl lg:text-5xl"
+              className="bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-600 bg-clip-text text-transparent drop-shadow-lg shadow-blue-200 px-1 rounded-lg"
               style={{
                 WebkitTextStroke: '2px #2563eb',
                 filter: 'drop-shadow(0 2px 4px #38bdf8)'
               }}
             >
-              MEDICODE MASTERY
+              CODECare 2.0
             </span>
             <span className="inline-block animate-bounce text-cyan-300 drop-shadow-lg ml-2" style={{ animationDelay: '0.2s' }}>
               <Icon icon="mdi:clipboard-check-outline" width={38} height={38} />
@@ -395,7 +405,7 @@ const HomeScreen: React.FC = () => {
               `}</style>
             </svg>
           </span>
-          <span className="block text-base md:text-lg font-bold text-black mt-2 tracking-normal animate-fade-in-slow">
+          <span className="block text-base md:text-lg font-semibold text-cyan-200 mt-2 tracking-normal animate-fade-in-slow">
             ACE IN CODING!
           </span>
         </motion.h1>
@@ -424,10 +434,17 @@ const HomeScreen: React.FC = () => {
             }}
           >
             {[
-              { label: "Start Game", onClick: startGame, shouldDisable: true },
-              // { label: "Continue", onClick: continueGame, shouldDisable: true },
-              { label: "View Scores", onClick: viewScores, shouldDisable: true },
-              { label: "Instructions", onClick: viewInstructions, shouldDisable: false },
+              { label: "Start Hackathon", onClick: startGame, shouldDisable: true },
+              {
+                label: "View Scores",
+                onClick: viewScores,
+                shouldDisable: true,
+              },
+              {
+                label: "Instructions",
+                onClick: viewInstructions,
+                shouldDisable: false,
+              },
               {
                 label: "Logout",
                 onClick: handleLogout,
@@ -464,7 +481,7 @@ const HomeScreen: React.FC = () => {
             ))}
           </motion.ul>
           <motion.div
-            className={`absolute z-20 w-max right-0 translate-x-[100%]${
+            className={`absolute z-20 w-max right-0 bottom-[-48px] translate-x-[100%]${
               layout.isMobile && layout.isHorizontal ? "" : ""
             }`}
             initial={{ opacity: 0 }}
@@ -476,13 +493,8 @@ const HomeScreen: React.FC = () => {
               alt="Scientist Character"
               className={
                 layout.isMobile && layout.isHorizontal
-                  ? "h-[320px] w-[320px] mb-0 bottom-[-4px]"
-                  : "h-[450px] w-[430px] mb-0 relative"
-              }
-              style={
-                layout.isMobile && layout.isHorizontal
-                  ? undefined
-                  : { bottom: '-36px', position: 'relative' }
+                  ? "h-[280px] mb-0"
+                  : "h-[420px] mb-0"
               }
             />
           </motion.div>
@@ -517,13 +529,15 @@ const HomeScreen: React.FC = () => {
               className="mb-6"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.4, type: "spring", bounce: 0.6 }}
+              transition={{
+                duration: 0.8,
+                delay: 0.4,
+                type: "spring",
+                bounce: 0.6,
+              }}
             >
               <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-r from-red-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg">
-                <Icon 
-                  icon="mdi:lock" 
-                  className="w-12 h-12 text-white" 
-                />
+                <Icon icon="mdi:lock" className="w-12 h-12 text-white" />
               </div>
               <motion.h1
                 className="text-3xl font-bold text-white mb-2 drop-shadow-lg"
@@ -542,7 +556,6 @@ const HomeScreen: React.FC = () => {
                 The game is currently locked. Please wait for it to be unlocked.
               </motion.p>
             </motion.div>
-            
             <motion.div
               className="space-y-4"
               initial={{ y: 30, opacity: 0 }}
@@ -551,8 +564,14 @@ const HomeScreen: React.FC = () => {
             >
               <div className="flex justify-center space-x-1">
                 <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div
+                  className="w-2 h-2 bg-white rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-white rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
               </div>
             </motion.div>
           </motion.div>
