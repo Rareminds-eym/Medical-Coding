@@ -8,8 +8,8 @@ import { useNavigate } from 'react-router-dom';
 
 interface ModuleMapProps {
   modules: Module[];
-  currentModuleId: number;
-  onModuleSelect: (id: number) => void;
+  currentModuleId: string | number;
+  onModuleSelect: (id: string | number) => void;
 }
 
 const ModuleMap: React.FC<ModuleMapProps> = ({
@@ -90,8 +90,13 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
   // Auto-scroll to current module
   useEffect(() => {
     if (scrollContainerRef.current) {
+      // Convert moduleId to index for positioning
+      const moduleIndex = typeof currentModuleId === 'string' && currentModuleId.startsWith('HL') 
+        ? parseInt(currentModuleId.replace('HL', '')) + 4  // Position HL modules after regular modules
+        : typeof currentModuleId === 'number' ? currentModuleId : parseInt(currentModuleId as string);
+        
       const targetX =
-        (currentModuleId - 1) * (PLATFORM_WIDTH + PLATFORM_SPACING);
+        (moduleIndex - 1) * (PLATFORM_WIDTH + PLATFORM_SPACING);
       const containerWidth = scrollContainerRef.current.clientWidth;
       const scrollTo = Math.max(
         0,
@@ -158,8 +163,23 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
     setIsDragging(false);
   };
 
+  // Function to calculate module position index
+  const getModuleIndex = (module: Module) => {
+    if (typeof module.id === 'string') {
+      if (module.id.startsWith('HL')) {
+        return parseInt(module.id.replace('HL', '')) + 4; // Position HL modules after regular modules (HL1 -> 5, HL2 -> 6)
+      }
+      return parseInt(module.id); // For regular string IDs like "1", "2", etc.
+    }
+    return module.id; // For numeric IDs
+  };
+  
+  // Calculate total width based on the highest module index
+  const highestModuleIndex = modules.reduce((max, module) => 
+    Math.max(max, getModuleIndex(module)), 0);
+    
   const totalWidth =
-    modules.length * (PLATFORM_WIDTH + PLATFORM_SPACING) + PLATFORM_SPACING;
+    highestModuleIndex * (PLATFORM_WIDTH + PLATFORM_SPACING) + PLATFORM_SPACING;
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
@@ -329,7 +349,7 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
                 paddingRight: `${PLATFORM_SPACING}px`,
               }}
             >
-              {/* Character sprite: only one, always above the first available module */}
+              {/* Character sprite: only one, always above the last available module */}
               {(() => {
                 // Find the last available module
                 const reversedIndex = [...modules].reverse().findIndex(
@@ -339,27 +359,28 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
                 if (lastAvailableIndex === -1) return null;
                 // Hide sprite in mobile horizontal
                 if (isMobile && isHorizontal) return null;
-                // Placement logic
+                
+                // Get the module and its ID
+                const lastModule = modules[lastAvailableIndex];
+                
+                // Placement logic - use the same zigzag pattern as the modules
                 let zigzagOffset = lastAvailableIndex % 2 === 0 ? -60 : 60;
-                let spriteTop, spriteLeft, spriteScale;
-                spriteTop = `calc(50% + ${zigzagOffset - 10}px)`;
-                spriteLeft = `${120}px`;
-                spriteScale = 1;
+                let spriteTop = `calc(50% + ${zigzagOffset - 10}px)`;
+                
                 return (
                   <div
                     style={{
                       position: "absolute",
-                      left: spriteLeft,
+                      width: "100%", // Take full width of container
                       top: spriteTop,
-                      transform: `translateX(-50%) scale(${spriteScale})`,
-                      transformOrigin: 'top left',
                       zIndex: 20,
                       pointerEvents: "none",
                     }}
                   >
+                    {/* Pass the module ID to the character sprite for correct positioning */}
                     <CharacterSprite
-                      key={modules[lastAvailableIndex].id}
-                      moduleId={modules[lastAvailableIndex].id}
+                      key={lastModule.id}
+                      moduleId={lastModule.id}
                       platformWidth={PLATFORM_WIDTH}
                       platformSpacing={PLATFORM_SPACING}
                     />
@@ -375,13 +396,19 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
                   : `calc(50% + ${index % 2 === 0 ? "-60" : "60"}px)`;
                 const nodeWidth = isMobile ? '40px' : `${PLATFORM_WIDTH}px`;
                 const nodeHeight = isMobile ? 40 : undefined;
+                
+                // Calculate position index based on module.id
+                const moduleIndex = typeof module.id === 'string' && module.id.startsWith('HL') 
+                  ? parseInt(module.id.replace('HL', '')) + 4 // Position HL modules after regular modules
+                  : typeof module.id === 'number' ? module.id : parseInt(module.id);
+                  
                 return (
                   <div
                     key={module.id}
                     className="absolute flex items-center justify-center z-20"
                     style={{
                       transform: "translateY(-50%)",
-                      left: `${PLATFORM_SPACING + index * (PLATFORM_WIDTH + PLATFORM_SPACING)}px`,
+                      left: `${PLATFORM_SPACING + (moduleIndex - 1) * (PLATFORM_WIDTH + PLATFORM_SPACING)}px`,
                       top: nodeTop,
                       width: nodeWidth,
                       height: nodeHeight,
@@ -416,14 +443,27 @@ const ModuleMap: React.FC<ModuleMapProps> = ({
               >
                 {modules.map((_, index) => {
                   if (index === modules.length - 1) return null;
-                  // Center of each node
+                  // Center of each node - handle special HLx module IDs
+                  // Get current module index (handling string-based IDs like HL1)
+                  const currentModule = modules[index];
+                  const nextModule = modules[index + 1];
+                  
+                  // Calculate indices for position
+                  const currentIndex = typeof currentModule.id === 'string' && currentModule.id.startsWith('HL') 
+                    ? parseInt(currentModule.id.replace('HL', '')) + 4 
+                    : typeof currentModule.id === 'number' ? currentModule.id : parseInt(currentModule.id);
+                  
+                  const nextIndex = typeof nextModule.id === 'string' && nextModule.id.startsWith('HL') 
+                    ? parseInt(nextModule.id.replace('HL', '')) + 4 
+                    : typeof nextModule.id === 'number' ? nextModule.id : parseInt(nextModule.id);
+                  
                   let x1 =
                     PLATFORM_SPACING +
-                    index * (PLATFORM_WIDTH + PLATFORM_SPACING) +
+                    (currentIndex - 1) * (PLATFORM_WIDTH + PLATFORM_SPACING) +
                     PLATFORM_WIDTH / 2;
                   let x2 =
                     PLATFORM_SPACING +
-                    (index + 1) * (PLATFORM_WIDTH + PLATFORM_SPACING) +
+                    (nextIndex - 1) * (PLATFORM_WIDTH + PLATFORM_SPACING) +
                     PLATFORM_WIDTH / 2;
                   // Move lines left in mobile horizontal
                   if (isMobile && isHorizontal) {

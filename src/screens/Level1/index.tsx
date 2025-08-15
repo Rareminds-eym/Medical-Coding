@@ -1,6 +1,7 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import BingoGame from '../BingoGame';
+import DraggableGameCard from '../DraggableGameCard';
 import { module4Level1Questions } from '../../data/Level1';
 import { module3Level1Questions } from '../../data/Level1/module3';
 import { module2Level1Questions } from '../../data/Level1/module2';
@@ -16,10 +17,15 @@ const level1QuestionsMap: Record<string, any> = {
   // Add more modules as needed
 };
 
+// Define modules that should use the GMP simulation interface instead of Bingo
+const gmpModuleIds = ['3']; // Regular modules that use the draggable interface
+
+// Hackathon modules also use the GMP simulation interface but with special modes
+const hackathonModuleIds = ['HL1', 'HL2'];
+
 const Level1Index: React.FC = () => {
   // Support route: /modules/:moduleId/levels/:levelId
   const { moduleId, levelId } = useParams<{ moduleId: string; levelId: string }>();
-  const navigate = useNavigate();
 
   // Log params for debugging
   console.log('[Level1Index] Route params:', { moduleId, levelId });
@@ -27,14 +33,30 @@ const Level1Index: React.FC = () => {
   // Use moduleId to select questions
   const questions = moduleId ? level1QuestionsMap[moduleId] : undefined;
 
+  // Check if we should use the GMP simulation interface (regular or hackathon)
+  const isRegularGmpModule = moduleId && gmpModuleIds.includes(moduleId);
+  const isHackathonModule = moduleId && hackathonModuleIds.includes(moduleId);
+  const shouldUseGmpSimulation = isRegularGmpModule || isHackathonModule;
 
   console.log('[Level1Index] moduleId:', moduleId);
-  console.log('[Level1Index] questions length:', questions.length);
-  console.log('[Level1Index] last question:', questions[questions.length - 1]);
+  console.log('[Level1Index] questions length:', questions?.length || 0);
+  console.log('[Level1Index] Using GMP simulation:', shouldUseGmpSimulation);
+  console.log('[Level1Index] Is hackathon module:', isHackathonModule);
 
-
-  // Pass both moduleId and questions to BingoGame
-  return <BingoGame moduleId={moduleId} questions={questions} />;
+  // Conditionally render either BingoGame or DraggableGameCard based on module
+  if (shouldUseGmpSimulation) {
+    if (isHackathonModule) {
+      // For hackathon modules, pass the appropriate mode
+      const mode = moduleId === 'HL1' ? 'violation-root-cause' : 'solution';
+      return <DraggableGameCard moduleId={moduleId} mode={mode} />;
+    } else {
+      // Regular GMP simulation modules
+      return <DraggableGameCard moduleId={moduleId} />;
+    }
+  } else {
+    // Regular Bingo game
+    return <BingoGame moduleId={moduleId} questions={questions} />;
+  }
 };
 
 export default Level1Index;
